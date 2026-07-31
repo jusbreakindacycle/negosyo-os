@@ -16,8 +16,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Lower bound is the minimum Next.js 16 supports; upper bound is current.
-        node-version: ["20.9", "24"]
+        # Currently supported Node.js LTS lines. Node 20 is end-of-life and is
+        # not testable here: Vitest's Rolldown dependency imports `styleText`
+        # from `node:util`, which Node 20.9 does not provide.
+        node-version: ["22", "24"]
 
     steps:
       - uses: actions/checkout@v5
