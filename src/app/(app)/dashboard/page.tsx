@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+
 import {
   Card,
   CardContent,
@@ -5,23 +7,41 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { readActiveBusinessCookie } from "@/features/businesses/active-business";
+import { listMyBusinesses } from "@/features/businesses/queries";
+import { resolveActiveBusiness } from "@/features/businesses/resolve-active-business";
+import { requireUser } from "@/lib/auth/current-user";
 
 /**
  * Shell landing page.
  *
- * Presents the two bounded domains side by side. Nothing here is wired to data
- * yet — the domain workspaces arrive in later build-plan milestones.
+ * Shows the active business by name. The two domain workspaces are still
+ * placeholders — they arrive in Milestone 2.
  */
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  await requireUser();
+
+  const businesses = await listMyBusinesses();
+
+  // Handled here rather than in the layout, which also wraps /onboarding.
+  if (businesses.length === 0) {
+    redirect("/onboarding");
+  }
+
+  const activeBusiness = resolveActiveBusiness(
+    await readActiveBusinessCookie(),
+    businesses,
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Your two workspaces
+        <h1 className="text-2xl font-semibold tracking-tight text-pretty">
+          {activeBusiness?.name ?? "Your business"}
         </h1>
         <p className="text-sm text-muted-foreground text-pretty">
-          One handles what the government needs from your business. The other
-          handles what happens inside it every day.
+          One workspace handles what the government needs from your business.
+          The other handles what happens inside it every day.
         </p>
       </div>
 
