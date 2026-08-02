@@ -125,8 +125,16 @@ select results_eq(
 -- Rejections
 -- ---------------------------------------------------------------------------
 
+-- Routed through the helper with a null user rather than called directly.
+--
+-- set_config(..., true) is local to the *transaction*, not to the statement,
+-- so the claims installed by the last call_rpc_as() above outlive it. A direct
+-- call here would still see that session, auth.uid() would return the previous
+-- user, and the RPC would cheerfully create a business -- so the assertion
+-- would report a passing guard while testing nothing. Passing null makes the
+-- helper blank request.jwt.claims first, which is what "no session" means.
 select throws_ok(
-  $$ select public.create_business_with_owner('No Session Here') $$,
+  $$ select pg_temp.call_rpc_as(null, 'No Session Here') $$,
   '42501',
   'auth_required',
   'the RPC refuses to run without a session, even though it is SECURITY DEFINER'

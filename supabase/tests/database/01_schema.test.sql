@@ -16,6 +16,16 @@ set search_path to extensions, public, pg_catalog;
 -- that has nothing to do with the schema.
 select no_plan();
 
+-- Every assertion below passes an explicit description, and that is load-
+-- bearing rather than cosmetic. pgTAP overloads these functions on argument
+-- count, and the schema-qualified and unqualified forms collide: with four
+-- untyped literals, col_type_is('public', 'profiles', 'id', 'uuid') binds to
+-- col_type_is(table, column, type, description) and looks for a column named
+-- "profiles" on a table named "public". It then fails with "Column
+-- public.profiles does not exist", which reads like a missing table rather
+-- than a mis-resolved call. Supplying the description moves each call to an
+-- arity where only the schema-qualified overload exists.
+
 
 -- ---------------------------------------------------------------------------
 -- Tables exist
@@ -38,34 +48,50 @@ select columns_are(
   array['id', 'display_name', 'created_at', 'updated_at'],
   'profiles has exactly the expected columns'
 );
-select col_type_is('public', 'profiles', 'id', 'uuid');
-select col_type_is('public', 'profiles', 'display_name', 'text');
-select col_type_is('public', 'profiles', 'created_at', 'timestamp with time zone');
-select col_type_is('public', 'profiles', 'updated_at', 'timestamp with time zone');
-select col_not_null('public', 'profiles', 'created_at');
-select col_not_null('public', 'profiles', 'updated_at');
-select col_is_null('public', 'profiles', 'display_name');
+select col_type_is('public', 'profiles', 'id', 'uuid',
+  'profiles.id is uuid');
+select col_type_is('public', 'profiles', 'display_name', 'text',
+  'profiles.display_name is text');
+select col_type_is('public', 'profiles', 'created_at', 'timestamp with time zone',
+  'profiles.created_at is timestamptz');
+select col_type_is('public', 'profiles', 'updated_at', 'timestamp with time zone',
+  'profiles.updated_at is timestamptz');
+select col_not_null('public', 'profiles', 'created_at',
+  'profiles.created_at is not null');
+select col_not_null('public', 'profiles', 'updated_at',
+  'profiles.updated_at is not null');
+select col_is_null('public', 'profiles', 'display_name',
+  'profiles.display_name is nullable and set by the owner later');
 
 select columns_are(
   'public', 'businesses',
   array['id', 'name', 'created_by', 'created_at', 'updated_at'],
   'businesses has exactly the expected columns'
 );
-select col_type_is('public', 'businesses', 'id', 'uuid');
-select col_type_is('public', 'businesses', 'name', 'text');
-select col_type_is('public', 'businesses', 'created_by', 'uuid');
-select col_not_null('public', 'businesses', 'name');
-select col_is_null('public', 'businesses', 'created_by');
-select col_has_default('public', 'businesses', 'id');
+select col_type_is('public', 'businesses', 'id', 'uuid',
+  'businesses.id is uuid');
+select col_type_is('public', 'businesses', 'name', 'text',
+  'businesses.name is text');
+select col_type_is('public', 'businesses', 'created_by', 'uuid',
+  'businesses.created_by is uuid');
+select col_not_null('public', 'businesses', 'name',
+  'businesses.name is not null');
+select col_is_null('public', 'businesses', 'created_by',
+  'businesses.created_by is nullable, so deleting an account keeps the business');
+select col_has_default('public', 'businesses', 'id',
+  'businesses.id is generated');
 
 select columns_are(
   'public', 'business_memberships',
   array['id', 'business_id', 'user_id', 'role', 'created_at', 'updated_at'],
   'business_memberships has exactly the expected columns'
 );
-select col_not_null('public', 'business_memberships', 'business_id');
-select col_not_null('public', 'business_memberships', 'user_id');
-select col_not_null('public', 'business_memberships', 'role');
+select col_not_null('public', 'business_memberships', 'business_id',
+  'business_memberships.business_id is not null');
+select col_not_null('public', 'business_memberships', 'user_id',
+  'business_memberships.user_id is not null');
+select col_not_null('public', 'business_memberships', 'role',
+  'business_memberships.role is not null');
 
 select columns_are(
   'public', 'audit_events',
@@ -75,14 +101,20 @@ select columns_are(
   ],
   'audit_events has exactly the expected columns'
 );
-select col_type_is('public', 'audit_events', 'id', 'bigint');
-select col_type_is('public', 'audit_events', 'metadata', 'jsonb');
-select col_not_null('public', 'audit_events', 'action');
-select col_not_null('public', 'audit_events', 'entity_type');
-select col_not_null('public', 'audit_events', 'metadata');
+select col_type_is('public', 'audit_events', 'id', 'bigint',
+  'audit_events.id is bigint');
+select col_type_is('public', 'audit_events', 'metadata', 'jsonb',
+  'audit_events.metadata is jsonb');
+select col_not_null('public', 'audit_events', 'action',
+  'audit_events.action is not null');
+select col_not_null('public', 'audit_events', 'entity_type',
+  'audit_events.entity_type is not null');
+select col_not_null('public', 'audit_events', 'metadata',
+  'audit_events.metadata is not null');
 -- Nullable so a future account-level event has somewhere to live; a null here
 -- is invisible to the select policy, which is the safe default.
-select col_is_null('public', 'audit_events', 'business_id');
+select col_is_null('public', 'audit_events', 'business_id',
+  'audit_events.business_id is nullable and such rows are invisible to the policy');
 
 -- audit_events is append-only, so it carries no updated_at to maintain.
 select hasnt_column('public', 'audit_events', 'updated_at',
@@ -107,10 +139,11 @@ select enum_has_labels('public', 'audit_domain',
 -- Keys, foreign keys, uniqueness
 -- ---------------------------------------------------------------------------
 
-select col_is_pk('public', 'profiles', 'id');
-select col_is_pk('public', 'businesses', 'id');
-select col_is_pk('public', 'business_memberships', 'id');
-select col_is_pk('public', 'audit_events', 'id');
+select col_is_pk('public', 'profiles', 'id', 'profiles.id is the primary key');
+select col_is_pk('public', 'businesses', 'id', 'businesses.id is the primary key');
+select col_is_pk('public', 'business_memberships', 'id',
+  'business_memberships.id is the primary key');
+select col_is_pk('public', 'audit_events', 'id', 'audit_events.id is the primary key');
 
 select fk_ok('public', 'profiles', 'id', 'auth', 'users', 'id');
 select fk_ok('public', 'businesses', 'created_by', 'public', 'profiles', 'id');
@@ -129,20 +162,31 @@ select col_is_unique(
 -- Indexes
 -- ---------------------------------------------------------------------------
 
-select has_index('public', 'businesses', 'businesses_created_by_idx');
-select has_index('public', 'business_memberships', 'business_memberships_user_id_business_id_idx');
-select has_index('public', 'business_memberships', 'business_memberships_business_id_user_id_key');
-select has_index('public', 'audit_events', 'audit_events_business_id_occurred_at_idx');
+select has_index('public', 'businesses', 'businesses_created_by_idx',
+  'businesses has an index covering the created_by foreign key');
+select has_index('public', 'business_memberships',
+  'business_memberships_user_id_business_id_idx',
+  'business_memberships can answer "list the businesses I belong to"');
+select has_index('public', 'business_memberships',
+  'business_memberships_business_id_user_id_key',
+  'the membership unique constraint indexes what the RLS predicate probes');
+select has_index('public', 'audit_events',
+  'audit_events_business_id_occurred_at_idx',
+  'audit_events can be read newest-first for one business');
 
 
 -- ---------------------------------------------------------------------------
 -- Triggers
 -- ---------------------------------------------------------------------------
 
-select has_trigger('public', 'profiles', 'profiles_set_updated_at');
-select has_trigger('public', 'businesses', 'businesses_set_updated_at');
-select has_trigger('public', 'business_memberships', 'business_memberships_set_updated_at');
-select has_trigger('auth', 'users', 'on_auth_user_created');
+select has_trigger('public', 'profiles', 'profiles_set_updated_at',
+  'profiles maintains updated_at');
+select has_trigger('public', 'businesses', 'businesses_set_updated_at',
+  'businesses maintains updated_at');
+select has_trigger('public', 'business_memberships', 'business_memberships_set_updated_at',
+  'business_memberships maintains updated_at');
+select has_trigger('auth', 'users', 'on_auth_user_created',
+  'a new auth user is given a profile');
 
 
 -- ---------------------------------------------------------------------------
@@ -263,9 +307,17 @@ select is(
   true,
   'create_business_with_owner is SECURITY DEFINER'
 );
+-- `set search_path = ''` reaches the catalogue as the text search_path=""
+-- here, and as search_path= on other builds. Both mean an empty search path,
+-- so this compares the decoded setting rather than the raw catalogue text and
+-- still fails if the pin is dropped, renamed, or given a non-empty value.
 select is(
-  (select proconfig from pg_proc p
+  (select array_agg(
+            split_part(cfg, '=', 1) || '=' || btrim(split_part(cfg, '=', 2), '"')
+            order by cfg)
+     from pg_proc p
      join pg_namespace n on n.oid = p.pronamespace
+     cross join lateral unnest(p.proconfig) as cfg
     where n.nspname = 'public' and p.proname = 'create_business_with_owner'),
   array['search_path='],
   'create_business_with_owner pins an empty search_path'
