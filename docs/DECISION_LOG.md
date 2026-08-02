@@ -234,3 +234,337 @@ After the fixes, **all 127 assertions pass** — 82 schema, 24 cross-business is
 **Standing rule:** a passing RLS test is only evidence if the negative case has been observed to fail for the intended reason. An assertion that cannot distinguish "the guard fired" from "the guard was never reached" is not a test. Milestone 1 is not marked complete on the strength of tests that have never run.
 
 **Known environment limitation:** Docker is not installed on the founder's machine, so `supabase db reset` and `supabase test db` cannot run locally, and CI does not yet execute the pgTAP suites. Verification currently runs against the linked development project. Restoring a local or CI path for these suites is an open task.
+
+---
+
+## DL-027 — Coffee shop selected as the first reference case; DL-006 partially superseded
+
+**Date:** 2026-08-02
+**Status:** Approved founder decision
+
+This supersedes **only the first clause** of DL-006, that the first operational vertical remains unselected. `docs/PROJECT_BLUEPRINT.md` v2.0 §11.1 names the coffee shop reference case as selected, which contradicted an approved project constraint. The contradiction is resolved here rather than left standing in the prose of two documents.
+
+**Evidence relied on** — Operator-reported evidence, DUO BREW, Mandaluyong City:
+
+- the franchisee decides their own order quantities;
+- there is no POS;
+- buying is done by eye — *"kung anong makita nilang kaonti."*
+
+The first point is the one that decides it. A franchisee who is told what to order has no decision for software to support. A franchisee who chooses quantity and timing does.
+
+### What remains binding
+
+DL-006's second clause is **not** superseded and remains in force: **the DUO BREW workflow does not select CaféOS.**
+
+Selecting a reference case is choosing what to build against. It is not narrowing the product to cafés. Specifically:
+
+- Permits stays horizontal and applies to every business type without exception (DL-032);
+- no café-specific vocabulary, column, or hard-coded item enters the shared spine;
+- coffee-shop specifics belong in seed data and per-business configuration, never in table names or engine names;
+- the twelve carried-forward operational candidates remain hypotheses, and comparative evidence is still required before any *market* is selected.
+
+Read as a licence to build vertical-only software, this entry is being read wrongly.
+
+Franchise is a feature subset, not a special case: a franchisee makes *fewer* decisions than an independent shop, not stranger ones. Supplier, price, and catalogue are fixed; quantity and timing remain theirs. Nothing built for the subset is wasted when expanding to independents.
+
+### Still unconfirmed
+
+DUO BREW produced no peso figure for monthly loss (DL-038), and whether the franchisor already supplies an ordering system remains open. If it does, it is the real incumbent for this reference case.
+
+---
+
+## DL-028 — Three user-facing feature names
+
+**Date:** 2026-08-02
+**Status:** Approved founder decision
+
+The owner sees three features, each named for the question it answers:
+
+| Internal codename | User-facing name | The owner's question |
+|---|---|---|
+| Operate & Decide | **Stocks** | *Ano bibilhin ko, magkano, kailan?* |
+| Start & Comply | **Permits** | *Ano kailangan kong ayusin, kailan ang deadline?* |
+| Tax readiness | **Taxes** | *Magkano kaya babayaran ko?* |
+
+`Start & Comply` and `Operate & Decide` are project codenames retained for code organisation, documentation, and domain boundaries. **They must never appear in the interface.** They are internal names, and an owner who sees them learns nothing.
+
+This governs feature naming only. DL-009 continues to govern the product name, which remains unscreened.
+
+---
+
+## DL-029 — Tax readiness is an intersection, not a third engine
+
+**Date:** 2026-08-02
+**Status:** Approved founder decision
+
+Taxes is not a third domain. It is the intersection of the other two: operations captures the money data, compliance knows the deadlines, and tax is what falls out of both.
+
+This is the structural reason the two domains belong in one application rather than two. Split them and the tax output cannot be produced by either half.
+
+Consequences:
+
+- no third domain package is created; Taxes is a read-side consumer;
+- it reads operational figures and compliance dates through explicit, typed service boundaries, never by importing another domain's internals;
+- it owns no primary input of its own, and must not acquire one;
+- it is delivered in M5, after both sources of its data exist.
+
+The boundaries in DL-010 and the product rules stand: organise and estimate, never assert and file.
+
+---
+
+## DL-030 — Daily gross sales is a required input
+
+**Date:** 2026-08-02
+**Status:** Approved product constraint
+
+The owner records **one number per day**: total gross sales. This is load-bearing, not optional telemetry.
+
+It unlocks percentage-tax estimation, the 8% versus graduated comparison, the ₱3,000,000 VAT threshold monitor, and sales-driven demand forecasting for Stocks. Without it the product cannot compute anything tax-related, and the reorder forecast loses its demand signal.
+
+**It is not a POS and must never become one.** No line items, no products sold, no transaction log, no receipt printing. The design target is under 30 seconds a day.
+
+The trade-off is accepted deliberately: a single self-reported figure is coarse and unverifiable. Requiring an itemised sales feed would be more accurate and would also lose the owner, who has no POS and did not ask for accounting software. Coarse data that is actually entered beats precise data that is not.
+
+Constraints that follow:
+
+- the figure is owner-reported and must be presented as such;
+- these records are not registered accounting books and must never be called that;
+- a missing day is a normal state and must be visible as missing, never silently interpolated into a total that is then used for a tax figure.
+
+The daily-sales table is the first slice of M2 after tracked items.
+
+---
+
+## DL-031 — Setup mode and Running mode
+
+**Date:** 2026-08-02
+**Status:** Approved founder decision
+
+The application changes shape according to where the business sits in its lifecycle. One application with two entry experiences, not two applications.
+
+**Setup mode** — before the business opens. Only the registration path is visible: ordered steps, blockers, evidence, running cost. Stocks and Taxes are shown as deferred — *"Mabubuksan kapag bukas na ang tindahan mo."* — rather than hidden, so the owner knows they exist.
+
+**Running mode** — after the business opens. All three features appear, and the registration case moves to history with its documents preserved.
+
+**Graduation.** Marking the mayor's permit as issued switches the mode. It is an earned moment, not a settings toggle. It is also the natural free-to-paid conversion trigger, because it coincides with the business beginning to earn.
+
+Product reason for Setup mode: during the 2–4 week permit wait the owner builds their item and supplier lists. That is dead time they are already spending, and it means a Door 1 business reaches opening day with tracking configured, a daily habit formed, and zero data debt.
+
+**Schema consequence.** Mode is derived from `businesses.status` — `draft | registering | operating | closed` — and is not a separate flag; two sources of truth for the same state will drift. `legal_name` is nullable and separate from the everyday `name`, because a business in Setup mode has no registered name yet. Both arrived by `ALTER TABLE` in M2 rather than a fresh `CREATE`, since `businesses` already existed from M1 (migration `20260802094500_add_business_legal_name_and_status.sql`).
+
+---
+
+## DL-032 — Permits is horizontal, Stocks is vertical; parking reinstated
+
+**Date:** 2026-08-02
+**Status:** Approved founder decision
+
+The most important structural decision in the product. The two engines have different shapes and must not be forced into one.
+
+| | Permits | Stocks |
+|---|---|---|
+| Shape | **Horizontal** — one model, all business types | **Vertical** — one configuration per archetype |
+| Composition | ~80% common trunk, ~20% industry tail | ~20% shared primitive, ~80% specific |
+| Applies to | Every business without exception | Configured per business type |
+| Commodity risk | High — Negosyo Centers give the same information free | Low — no free alternative exists |
+| Pricing consequence | Free tier | Paid tier (DL-037, unapproved) |
+
+**Parking is reinstated.** v1 deferred parking operators entirely. That was wrong and is reversed here. A parking operator needs DTI or SEC registration, barangay clearance, a mayor's permit, BIR registration, and the January renewal exactly as a carinderia does. **No business type is out of scope for Permits.**
+
+What varies by business type is the Stocks configuration, never access to Permits. A business whose Stocks archetype has not been built yet still gets the full Permits engine.
+
+Practical consequence for M2 and M3: Permits schema and rules carry no business-type branching in the trunk, and Stocks does not attempt to serve every archetype at once.
+
+---
+
+## DL-033 — Reconciliation Ledger supersedes the Par Ledger framing
+
+**Date:** 2026-08-02
+**Status:** Approved founder decision
+
+"Par Ledger" described physical stock levels only, which is one instance of a more general pattern: *something goes out, something should come back, and the gap is the leak.*
+
+| Business | Goes out | Should come back | The leak |
+|---|---|---|---|
+| Coffee shop | Ingredients | Sales | Spoilage, stockout |
+| Carinderia | Cooked food | Same-day sales | Spoilage — worst of the set |
+| Rice retail | Sacks | Kilos sold | Over-scooping, spillage, moisture |
+| Laundry | Customer items | Same items, claimed | Lost or unclaimed items |
+| Water refilling | Containers | Containers returned | Unreturned containers are capital loss |
+| Parking | Tickets | Cash | Uncollected, unticketed |
+| Aircon services | Completed jobs | Payment | Unbilled work, aged receivables |
+
+One pattern, seven configurations. The name is adopted because "inventory" cannot describe the last three rows, and a product that ships an inventory table will never grow into them.
+
+**This is a naming and modelling frame, not authorisation to build a universal engine now.** DL-007 stands unchanged: build the concrete inventory-centred flow first, then a structurally different job-centred flow, and only then extract whatever is genuinely shared. Reconciliation Ledger names what may eventually be extracted. It does not license extracting it before two real instances exist.
+
+---
+
+## DL-034 — BMBE moves to Milestone 3 and the free tier
+
+**Date:** 2026-08-02
+**Status:** Approved founder decision
+
+Placement only. **Every guardrail in DL-010 stands unchanged and unweakened.**
+
+BMBE is one path inside Permits, delivered in M3. It is not a headline feature, not a separate engine, and not a market.
+
+It sits in the free tier for two reasons:
+
+1. The same information is available free from DTI and Negosyo Centers. Competing against free is unwinnable.
+2. It is **episodic** — screening, certification, renewal — not weekly. This is the identical argument that keeps the RA 11032 statutory clock out of the paid tier, and it must be applied consistently rather than selectively to whichever feature is currently in favour.
+
+The application still must not certify eligibility, issue or imitate a Certificate of Authority, activate an income-tax exemption, count land toward the statutory asset ceiling, or imply that BMBE removes other registrations, taxes, records, invoices, labour obligations, or LGU requirements.
+
+---
+
+## DL-035 — No knowledge base; in-context help instead
+
+**Date:** 2026-08-02
+**Status:** Approved founder decision
+
+A searchable article library is **rejected**. It would require hundreds of articles, need constant maintenance as rules change, duplicate freely available search results, and mismatch how owners behave: an owner does not browse a help centre, they get stuck on one specific step and want help at that step.
+
+What is built instead is an *"Ano ito?"* affordance beside the thing that confused them, giving two sentences about that exact thing. No articles, no search box, no separate content system.
+
+Consequences: help text lives next to the field or step it explains and is versioned with it; there is no content-management surface to build or staff; and no screen sends the owner away from their task to find an answer.
+
+---
+
+## DL-036 — AI explains; AI does not decide
+
+**Date:** 2026-08-02
+**Status:** Approved founder decision
+
+> **AI explains. AI does not decide.**
+
+Correct: *"This is Barangay Clearance. Kailangan mo ito bago ka makapag-apply sa City Hall."*
+Wrong: *"You owe ₱18,372. File it now."*
+
+AI is invisible plumbing behind in-context help (DL-035) — not a tab, a mascot, or a chat bubble. **Do not lead any public-facing description with AI.** Owners buy *"alam mo na kung ano bibilhin,"* not "AI-powered platform."
+
+For high-impact outputs, continue to show: what the source says; what it does not say; the applicable inference; conflicts; unknowns; the bounded next action; and the evidence source with its version. Evidence labels are never upgraded silently.
+
+This is consistent with the standing domain boundaries and does not relax them: no automatic tax conclusion, no automatic eligibility determination, no automatic declaration of compliance, and no presentation of AI as a lawyer, CPA, or government officer.
+
+---
+
+## DL-037 — Pricing hypothesis, not approved
+
+**Date:** 2026-08-02
+**Status:** Proposal — not approved
+
+Recorded so the reasoning is not lost, and explicitly **not** approved.
+
+| Tier | Contains | Logic |
+|---|---|---|
+| Free | Registration path, Setup mode, deadline reminders, RA 11032 clock, BMBE path | Government channels give the same information free |
+| Paid | Buying assistant, variance, cost history, price-change alerts, tax readiness, ₱3M monitor | No free alternative exists |
+
+Setup mode functions as a trial that costs nothing to provide, with opening day (DL-031) as the natural conversion trigger.
+
+Unit economics held in view: at ₱399 per month net of Google Play's cut, roughly 90 paying subscribers replace a ₱30,000 monthly salary. The target is ninety paying owners, not "users." That is arithmetic on an unapproved price, not a forecast.
+
+Billing is out of scope until after M7 and is not built in Phase 1A. While this remains a proposal, no screen, document, or public claim may present a price, a tier boundary, or a trial period as settled.
+
+---
+
+## DL-038 — Field evidence: two interviews complete, both null on peso figures
+
+**Date:** 2026-08-02
+**Status:** Firsthand user observation — confirmed null result
+
+Two operator conversations are complete. Confirmed from them:
+
+- DUO BREW, Mandaluyong: franchisee decides order quantities; no POS; buys by eye; two-sided trap of stockout against *sayang*; operated by two adults with a 15-year-old helping occasionally.
+- Car-tint installation, Pasig: owns his premises so no rent; requirements were complete, so one City Hall trip; assessed ₱5,123.50; temporary sanitary paperwork; BFP instructions; apparent 90-day temporary permit.
+
+**Both interviews produced no peso figure. Neither owner could name what the problem costs them.**
+
+- DUO BREW gave **no figure at all** for monthly loss from spoilage, stockout, or overbuying.
+- The car-tint owner, asked what advance knowledge of the steps would have saved him, answered ***"wala siyang ideya."***
+
+A second qualifier on the car-tint case: he was prepared partly *because the founder helped him*, so he is not evidence about unassisted registrants.
+
+These are null results and they stay visible. They must not be dropped, summarised away, or replaced with a confirmed-adjacent phrasing in any future revision of any document.
+
+What this means operationally: **the loss the product is built to prevent is assumed, not measured.** Kill criterion 1 is live — if no interviewed owner names a peso figure for a loss, stop. Two have already failed to. The next interview is the test, not a formality.
+
+Paired with DL-039.
+
+---
+
+## DL-039 — Competitor landscape never researched
+
+**Date:** 2026-08-02
+**Status:** Unknown
+
+The founding critique of this project was that many companies already do this. **It has never been checked.** Not checked and inconclusive — never attempted.
+
+Unknown:
+
+- what existing Philippine MSME inventory and compliance applications cost;
+- who actually uses them;
+- why owners abandon them, if they do;
+- whether the DUO BREW franchisor already provides an ordering system, which would remove the wedge for the reference case selected in DL-027;
+- whether franchisors would block, tolerate, or welcome a third-party tool used by their franchisees.
+
+No document, screen, or pitch may state or imply that no adequate alternative exists, that the space is empty, or that this is a gap in the market. None of that is known. This is Risk 3 and it is unmitigated.
+
+Recorded as its own entry, separate from DL-038, so it cannot be folded into a general evidence caveat and quietly diluted.
+
+**Numbering note:** the v2 decisions listed eleven topics across the twelve entries DL-028 to DL-039. Field evidence is deliberately split into two entries rather than compressing eleven into eleven and renumbering, because this log is append-only and the competitor gap earns its own line.
+
+---
+
+## DL-040 — The `(app)` route group is explicitly dynamic
+
+**Date:** 2026-08-02
+**Status:** Approved implementation decision
+
+`src/app/(app)/layout.tsx` declares `export const dynamic = "force-dynamic"`. Every route in that group depends on the request's session, so none of them can be statically prerendered.
+
+**Root cause, recorded because the fix is not self-explanatory.** The group was already dynamic in practice, but only by accident. `createClient()` reads `cookies()`, and that read is what marks a route dynamic. `getSupabaseEnv()` runs on the line immediately before it. On a machine that has the Supabase variables the cookie read happens and the route is inferred dynamic; on one that does not — CI, which has no `.env.local` — the environment check throws first, the dynamic signal is never emitted, and the build fails while prerendering a page that was never meant to be static.
+
+So the failure was not a missing environment variable. It was a route whose dynamism depended on the order of two statements inside a helper it does not control. Swapping those two lines back would break it again, silently, at build time only.
+
+**Standing rule:** a route that must be dynamic declares that it is dynamic. Do not rely on a runtime API call buried in a helper to infer it.
+
+**The `(auth)` group was checked and needs no equivalent.** `(auth)/layout.tsx`, `/sign-in`, and `/sign-up` are synchronous components with no Supabase client, no cookie read, and no session dependency. They are genuinely static and should stay prerendered; adding `force-dynamic` there would cost render time for nothing.
+
+---
+
+## DL-041 — The business day is Manila's, and a wrong day is deleted rather than zeroed
+
+**Date:** 2026-08-02
+**Status:** Approved founder decision
+
+Two decisions about `daily_sales`, delivered by migration `20260802113000_create_daily_sales.sql` under DL-030. Both are recorded because both look like defects to a reader who does not know why they are there.
+
+### "Today" means today in Manila
+
+The default date for a recorded day comes from `private.manila_today()`, which evaluates `(now() at time zone 'Asia/Manila')::date` inside the RPC. It is **not** `current_date`, and it is **not** a `CHECK` constraint on the table.
+
+The database clock is UTC. Manila is UTC+8 with no daylight saving, so between 16:00 and 23:59 UTC — midnight to 08:00 in Manila — the UTC date is still yesterday by the owner's calendar. An owner cashing up at 1am and entering the day's take would have it filed under the previous date, and would have no reason to suspect it. That is eight hours of every day, not an edge case, and the misfiled figure flows into a quarterly gross that feeds a percentage-tax estimate.
+
+**Do not "correct" this to UTC.** A future reader will see a hardcoded timezone in a shared spine and reach for the portable-looking fix. This is a Philippines-only product; a UTC default is not more correct here, it is wrong for a third of the clock. If that ever stops being true, `private.manila_today()` is the single place that changes, and a per-business timezone column is the change to make.
+
+It is a function rather than a `CHECK` constraint for two reasons. Postgres forbids a non-immutable function inside a check constraint, so the constraint could not be written at all; and a date bound frozen into the schema would block the legitimate case of an owner backfilling last week's notebook. The forward-date rejection therefore lives in the RPC, where it can compare against a live value.
+
+### A wrong day is deleted, not zeroed
+
+`public.delete_daily_sales()` exists, is `SECURITY DEFINER`, and writes an audit event carrying both the date and the amount it removed.
+
+Deletion is offered here and deliberately not offered for tracked items, which are retired by an `is_active` flag instead. The difference is dependants. An item has them — counts and purchases already refer to it — so its history has to stay readable. A day of sales has none.
+
+The alternative, editing the amount to zero, was rejected. A zero row asserts that the business opened that day and took nothing. That is a false record rather than a correction, and it would sit in the data as a real trading day forever. A figure filed under the wrong date permanently inflates the quarterly gross behind a tax estimate and the ₱3,000,000 VAT threshold position, so the row goes.
+
+The audit event is what makes deletion safe to offer: after the statement returns, it is the only remaining evidence of the figure. Both values in its metadata are read from the deleted row and are never supplied by the caller.
+
+Re-entering a day that already exists is a **correction**, not an error. The RPC upserts and audits it as `daily_sales.corrected`, carrying the replaced figure. An owner who typed 12,750.50 and meant 45,000.00 must not meet a unique-violation message, and the quarter must not count both figures.
+
+### Verification status
+
+**Pending verification.** The migration is applied to the linked development project and sixteen structural checks pass against it: RLS enabled, one member-only `SELECT` policy and no write policy, no write grant to `authenticated`, no privilege at all for `anon`, both RPCs `SECURITY DEFINER` with an empty `search_path`, and neither taking a user id. Three negative cases were observed failing for the intended reason against the live API as `anon` — `permission denied` for the table, for `record_daily_sales`, and for `delete_daily_sales`.
+
+The behavioural half of `supabase/tests/database/05_daily_sales.test.sql` has **not** run. pgTAP is not installed on the linked project, installing it needs write DDL that the read-only MCP connection refuses, and `supabase test db` needs Docker, which is still not installed (DL-026). The positive paths — the upsert correction, the delete, the audit metadata, and cross-business isolation with real rows — are written but unverified. Under the standing rule in DL-026 they are not evidence until they have run.

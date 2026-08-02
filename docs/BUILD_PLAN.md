@@ -41,12 +41,12 @@ Tenancy rule established here and binding on every later milestone: **a person r
 
 The priority-stock and buying loop, informed by DUO BREW in Mandaluyong City. Primary output is a purchase recommendation, not a variance report.
 
-- [ ] Extend `businesses` with `legal_name` and lifecycle `status`.
-- [ ] Create tracked priority item with unit and pack size.
+- [x] Extend `businesses` with `legal_name` and lifecycle `status`.
+- [x] Create tracked priority item with unit and pack size.
 - [ ] Onboard 8–12 priority items only, never a full inventory.
 - [ ] Record a stock count.
 - [ ] Record a delivery or receiving event.
-- [ ] Record **daily gross sales** as one number per day.
+- [x] Record **daily gross sales** as one number per day.
 - [ ] Calculate days-to-stockout.
 - [ ] Produce a reorder recommendation with quantity.
 - [ ] Record the owner's approve, change, or reject decision.

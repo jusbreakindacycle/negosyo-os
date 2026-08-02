@@ -27,11 +27,31 @@ Keep shared platform services separate from domain-specific rules.
 
 Do not collapse the application into one generic ERP, POS, accounting, tax, legal, and permit module.
 
+### Naming
+
+`Start & Comply` and `Operate & Decide` are internal codenames. **They must never appear in the interface.** The three features the owner sees are:
+
+| Internal name | User-facing name | The owner's question |
+| --- | --- | --- |
+| Operate & Decide | **Stocks** | *Ano bibilhin ko, magkano, kailan?* |
+| Start & Comply | **Permits** | *Ano kailangan kong ayusin, kailan ang deadline?* |
+| Tax readiness | **Taxes** | *Magkano kaya babayaran ko?* |
+
+Taxes is not a third engine. It is the intersection of the other two: operations captures the money data, compliance knows the deadlines, tax is what falls out. That intersection is the reason both domains live in one application.
+
+### The data spine
+
+The owner enters data once — daily gross sales as a single number, purchases and expenses with receipt, and weekly counts of priority items only. Stocks, Permits, and Taxes are all outputs of that one spine.
+
+The single daily gross-sales figure is load-bearing. It is not a POS. Without it the product cannot compute anything tax-related.
+
 ## Current implementation authority
 
 Phase 1A foundation-prototype coding is authorised.
 
-The prototype stack in `docs/TECHNICAL_FOUNDATION.md` is selected for implementation unless the founder explicitly changes it.
+Milestones **M0** (scaffold) and **M1** (authentication, tenancy, RLS, audit spine) are complete. **M2 (Stocks)** is the current milestone. The order was corrected against the real repository on 2026-08-02; see DL-025 and `docs/BUILD_PLAN.md`.
+
+The prototype stack in `docs/TECHNICAL_FOUNDATION.md` is selected for implementation unless the founder explicitly changes it. Where that document and `docs/PROJECT_BLUEPRINT.md` v2.0 disagree, **the blueprint is authoritative** and the technical foundation is the document to correct.
 
 This does not approve:
 
@@ -41,9 +61,13 @@ This does not approve:
 - automatic tax conclusions;
 - legal or CPA representation;
 - a nationwide rules database;
-- a first operational vertical;
-- CaféOS as the market;
-- DUO BREW as a pilot.
+- subscription billing.
+
+### Resolved: the first reference case
+
+The coffee shop is the selected first reference case (DL-027, superseding only the "vertical unselected" clause of DL-006).
+
+DL-006's second clause remains binding: **the DUO BREW workflow does not select CaféOS.** Selecting a reference case is choosing what to build against, not narrowing the product to cafés. Permits stays horizontal and applies to every business type without exception (DL-032). No café-specific vocabulary, column, or hard-coded item enters the shared spine; coffee-shop specifics live in seed data and per-business configuration.
 
 ## Coding discipline
 
@@ -60,8 +84,19 @@ This does not approve:
 - Never expose secrets or service-role keys to the browser.
 - Use database migrations for schema changes.
 - Enable and test Row Level Security for every exposed table.
+- Verify RLS against a real database. A passing test is only evidence if the negative case has been observed to fail for the intended reason (DL-026).
 - Treat document access as sensitive by default.
 - Keep domain language understandable to ordinary business owners.
+
+### Tool output
+
+Filter tool output at the source. Do not dump whole payloads into context —
+grep, head, or parse down to the lines that matter. Parse TAP output to
+failures only. Never cat a generated types file, an extension list, or a
+full lockfile.
+
+Reason: two responses stalled mid-stream this session, both immediately
+after very large tool results. Smaller payloads reduce the exposure.
 
 ## Domain boundaries
 
@@ -100,6 +135,34 @@ It must not:
 - accuse a person of theft or fraud from an anomaly;
 - force businesses to replace an existing POS.
 
+Stocks leads with the **buying decision**, not the variance report. The primary output is *"Beans: about 3 days left. Order 8 kg — that's your usual week."* Variance is secondary and appears only once a baseline exists. An owner who has never measured a loss will not believe a loss report, but will believe a stockout prediction, because they can check it on Thursday.
+
+Onboarding must never require entering a full inventory: 8–12 priority items only. If first-run setup exceeds 20 minutes, the notebook wins.
+
+### Taxes may
+
+- total gross sales and show the position against the ₱3,000,000 VAT threshold;
+- estimate percentage tax and show which BIR form it relates to;
+- compare the 8% option against graduated rates as an estimate for discussion.
+
+It must not:
+
+- state an amount owed as fact;
+- elect a tax option on the owner's behalf;
+- prepare or submit a filing;
+- present an estimate without its confirm-with-your-accountant boundary.
+
+The boundary is organise and estimate, never assert and file:
+
+- correct: *"Gross sales this quarter: ₱612,400. At 3%, percentage tax would be about ₱18,372. Confirm with your accountant before filing."*
+- wrong: *"You owe ₱18,372. File 2551Q now."*
+
+### RA 11032 statutory clock
+
+The defensible part of Permits is not a checklist; it is RA 11032 enforcement. The application may record the date of complete submission with its receipt, classify a transaction into the 3 / 7 / 20 working-day buckets under §5, count working days, alert when the statutory deadline passes, and generate the §9 written demand for the deemed-approved document.
+
+It must not present the deemed-approved remedy as automatic, guarantee that a demand will succeed, or file anything on the owner's behalf.
+
 ## Evidence labels
 
 Use these labels in documentation, seeded reference content, and high-impact AI explanations:
@@ -122,6 +185,8 @@ Never upgrade the status of a statement silently.
 ## BMBE guardrails
 
 BMBE means Barangay Micro Business Enterprise under RA 9178. It is not an alternative market outside MSMEs; it is a special certification or status potentially available to qualified micro enterprises.
+
+**Placement:** BMBE is one path inside Permits, delivered in M3. It is not a headline feature and not a separate engine. It sits in the free tier, because the same information is available free from Negosyo Centers and competing against free is unwinnable. The guardrails below stand unchanged (DL-010).
 
 The application may:
 
@@ -161,6 +226,18 @@ Reference-case locations:
 - DUO BREW: Mandaluyong City;
 - car-tint installation services: Pasig City;
 - air-conditioning installation, cleaning, and repair: B2B service case with mostly corporate and bank clients; exact operating details remain pending interview.
+
+## Tenancy rule
+
+Established in M1 and binding on every table added afterwards:
+
+> A person reaches a business through `business_memberships` and through nothing else.
+
+- No other column, anywhere, confers access.
+- No development-only business identifier, seeded owner, or bypass may stand in for a real membership.
+- `authenticated` holds **no write privilege** on any table. Every write goes through a `SECURITY DEFINER` function with an empty `search_path`, so grants and policies fail independently and a mistake in one does not open the other.
+- Identity inside those functions comes from `auth.uid()` only, never from a parameter. A function that takes a user id is a function that can be impersonated through.
+- Reuse `private.is_business_member()` rather than copying the membership predicate into each policy, where one copy could drift.
 
 ## Architecture guardrails
 
