@@ -105,42 +105,58 @@ Example:
 
 This is a prototype model, not the final enterprise architecture.
 
+This section originally predated `docs/PROJECT_BLUEPRINT.md` v2.0 and was incomplete: it omitted daily sales and suppliers entirely, and its Operate & Decide list did not carry the buying facts that a reorder recommendation needs. It is corrected here. **Where this section and the blueprint still disagree, the blueprint governs.**
+
+Do not create every table at once. Add tables only when the corresponding build-plan slice begins. Status below reflects what exists in `supabase/migrations`.
+
 ### Shared
 
-- `profiles`
-- `businesses`
-- `business_memberships`
-- `branches`
-- `documents`
-- `document_links`
-- `audit_events`
+| Table | Status |
+| --- | --- |
+| `profiles` | Built (M1) |
+| `businesses` | Built (M1); `legal_name` and `status` added in M2 |
+| `business_memberships` | Built (M1) |
+| `audit_events` | Built (M1) |
+| `branches` | Not yet needed |
+| `documents` | M4 |
+| `document_links` | M4 |
 
-### Start & Comply
+`businesses` carries three separate name-and-lifecycle facts. `name` is what the owner calls the business and exists from the moment the row is created. `legal_name` is the registered DTI or SEC name and **must stay nullable**, because a business in Setup mode has not got one yet. `status` is `draft | registering | operating | closed` and is what drives Setup mode versus Running mode.
 
-- `compliance_cases`
-- `compliance_tasks`
-- `task_assignments`
-- `fee_records`
-- `status_events`
-- `business_certifications`
-- `eligibility_assessments`
-- `asset_snapshots`
-- `certification_effects`
+### Operate & Decide — Stocks
 
-### Operate & Decide
+| Table | Status | Note |
+| --- | --- | --- |
+| `tracked_items` | Built (M2) | 8–12 priority items, with `unit`, `pack_size`, `minimum_order_qty`, `latest_unit_cost` |
+| `daily_sales` | M2 | One gross-sales figure per business per day. Load-bearing for all of Taxes. |
+| `stock_counts` | M2 | |
+| `suppliers` | M2 | Adds `tracked_items.supplier_id` by `ALTER` when it lands |
+| `purchases` | M2 | |
+| `purchase_lines` | M2 | |
+| `receiving_events` | M2 | |
+| `purchase_needs` | M2 | The reorder recommendation and the owner's decision on it |
+| `discrepancies` | M2 | Secondary to the buying decision, not the headline |
+| `owner_actions` | M2 | |
+| `action_outcomes` | M2 | |
+| `inventory_movements` | Deferred | Do not build a general movement ledger before the concrete flow works |
 
-- `tracked_items`
-- `stock_counts`
-- `purchase_needs`
-- `purchases`
-- `purchase_lines`
-- `receiving_events`
-- `inventory_movements`
-- `discrepancies`
-- `owner_actions`
-- `action_outcomes`
+`daily_sales` and `latest_unit_cost` are the only sources of a peso figure in Stocks. Without them a shortage can only ever be reported in kilos, and nothing tax-related can be computed at all.
 
-Do not create every table at once. Add tables only when the corresponding build-plan slice begins.
+### Start & Comply — Permits
+
+| Table | Status |
+| --- | --- |
+| `compliance_cases` | M3 |
+| `compliance_tasks` | M3 |
+| `task_assignments` | M3 |
+| `fee_records` | M3 |
+| `status_events` | M3 |
+| `business_certifications` | M3 (BMBE Certificate of Authority) |
+| `eligibility_assessments` | M3 (non-binding screening only) |
+| `asset_snapshots` | M3 |
+| `certification_effects` | M3 |
+
+The RA 11032 clock needs the date of complete submission, the 3 / 7 / 20 transaction class, and the submission receipt as evidence. The receipt is a document, so the statutory clock depends on M4.
 
 
 ### Enterprise classification data
@@ -189,9 +205,18 @@ Do not calculate final BMBE eligibility or activate tax treatment solely in clie
 
 Each business-owned record must be linked to a `business_id`.
 
-Users access a business through `business_memberships`.
+Users access a business through `business_memberships` **and through nothing else.** No other column confers access, and no development-only identifier may stand in for a real membership.
 
-Minimum roles for the prototype:
+As implemented in M1 and carried into every table since:
+
+- `authenticated` holds no write privilege on any table. Every write goes through a `SECURITY DEFINER` function with an empty `search_path`, so grants and policies fail independently and a mistake in one does not open the other.
+- Identity inside those functions comes from `auth.uid()` only, never from a parameter. A function taking a user id is a function that can be impersonated through.
+- `private.is_business_member()` holds the membership predicate once rather than repeating it in each policy, where one copy could drift.
+- That helper must be executable by `authenticated`, because a policy expression is evaluated as the invoking role rather than as the table owner. Granting it opens nothing: `private` is absent from `api.schemas`, so PostgREST publishes no endpoint for it, and the function takes no user id.
+
+Roles arrive in the milestone that first uses them, each by its own `alter type ... add value`. `business_role` currently carries `owner` alone.
+
+Eventual roles for the prototype:
 
 - `owner`
 - `admin`
