@@ -202,6 +202,63 @@ export type Database = {
         }
         Relationships: []
       }
+      tracked_items: {
+        Row: {
+          business_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          latest_unit_cost: number | null
+          minimum_order_qty: number | null
+          name: string
+          pack_size: number | null
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          latest_unit_cost?: number | null
+          minimum_order_qty?: number | null
+          name: string
+          pack_size?: number | null
+          unit: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          latest_unit_cost?: number | null
+          minimum_order_qty?: number | null
+          name?: string
+          pack_size?: number | null
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracked_items_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tracked_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -221,6 +278,65 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "businesses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_tracked_item: {
+        Args: {
+          p_business_id: string
+          p_latest_unit_cost?: number
+          p_minimum_order_qty?: number
+          p_name: string
+          p_pack_size?: number
+          p_unit: string
+        }
+        Returns: {
+          business_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          latest_unit_cost: number | null
+          minimum_order_qty: number | null
+          name: string
+          pack_size: number | null
+          unit: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tracked_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_tracked_item: {
+        Args: {
+          p_is_active?: boolean
+          p_item_id: string
+          p_latest_unit_cost?: number
+          p_minimum_order_qty?: number
+          p_name?: string
+          p_pack_size?: number
+          p_unit?: string
+        }
+        Returns: {
+          business_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          latest_unit_cost: number | null
+          minimum_order_qty: number | null
+          name: string
+          pack_size: number | null
+          unit: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tracked_items"
           isOneToOne: true
           isSetofReturn: false
         }
