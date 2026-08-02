@@ -4,46 +4,96 @@
 
 Complete one milestone at a time. Do not build later features merely because their future need is obvious.
 
-## Milestone 0 — Repository and application scaffold
+Milestone numbering was corrected against the actual state of the repository on 2026-08-02. Authentication and tenancy were built before Stocks, and are retained rather than rebuilt. See DL-025.
 
-- [ ] Confirm clean Git status.
-- [ ] Initialise Next.js with TypeScript, App Router, Tailwind, `src/`, ESLint, and `@/*`.
-- [ ] Add shadcn/ui using the current supported setup.
-- [ ] Add Supabase client and SSR packages using current official guidance.
-- [ ] Create `.env.example`.
-- [ ] Add basic CI for lint, type check, test, and build.
-- [ ] Create mobile-first public placeholder and authenticated app shell.
-- [ ] Record exact installed versions in the lockfile, not in product prose.
+User-facing names are **Stocks**, **Permits**, and **Taxes**. `Start & Comply` and `Operate & Decide` are internal codenames and must never appear in the interface.
 
-**Exit condition:** Development server, lint, type check, tests, and production build pass.
+## Milestone 0 — Repository and application scaffold ✅ Complete
 
-## Milestone 1 — Authentication and business tenancy
+- [x] Confirm clean Git status.
+- [x] Initialise Next.js with TypeScript, App Router, Tailwind, `src/`, ESLint, and `@/*`.
+- [x] Add shadcn/ui using the current supported setup.
+- [x] Add Supabase client and SSR packages using current official guidance.
+- [x] Create `.env.example`.
+- [x] Add basic CI for lint, type check, test, and build.
+- [x] Create mobile-first public placeholder and authenticated app shell.
+- [x] Record exact installed versions in the lockfile, not in product prose.
 
-- [ ] Configure Supabase local or linked development workflow.
-- [ ] Add initial migrations for profiles, businesses, and memberships.
-- [ ] Enable RLS.
-- [ ] Add owner role.
-- [ ] Implement sign-up, sign-in, sign-out, and session handling.
-- [ ] Create business onboarding.
-- [ ] Create business switcher for authorised businesses.
-- [ ] Add cross-business isolation tests.
-- [ ] Add minimal audit event model.
+**Exit condition:** Development server, lint, type check, tests, and production build pass. — met.
 
-**Exit condition:** An owner can create a business and cannot access another owner’s business.
+## Milestone 1 — Authentication and business tenancy ✅ Complete
 
-## Milestone 2 — Unified dashboard and domain navigation
+- [x] Configure Supabase local or linked development workflow.
+- [x] Add initial migrations for profiles, businesses, and memberships.
+- [x] Enable RLS.
+- [x] Add owner role.
+- [x] Implement sign-up, sign-in, sign-out, and session handling.
+- [x] Create business onboarding.
+- [x] Create business switcher for authorised businesses.
+- [x] Add cross-business isolation tests.
+- [x] Add minimal audit event model.
 
-- [ ] Create mobile-first app navigation.
-- [ ] Create one business dashboard with two clear workspaces:
-  - Start & Comply
-  - Operate & Decide
-- [ ] Show current business and evidence-status language.
-- [ ] Add empty states that explain each domain in plain language.
-- [ ] Avoid final visual branding.
+**Exit condition:** An owner can create a business and cannot access another owner's business. — met, and verified against a real Supabase instance rather than asserted.
 
-**Exit condition:** A normal owner can explain the difference between the two workspaces after using the interface.
+Tenancy rule established here and binding on every later milestone: **a person reaches a business through `business_memberships` and through nothing else.** No later table may introduce a second route to access, and no development shortcut may stand in for a real membership.
 
-## Milestone 3 — Secure document vault
+## Milestone 2 — Stocks
+
+The priority-stock and buying loop, informed by DUO BREW in Mandaluyong City. Primary output is a purchase recommendation, not a variance report.
+
+- [ ] Extend `businesses` with `legal_name` and lifecycle `status`.
+- [ ] Create tracked priority item with unit and pack size.
+- [ ] Onboard 8–12 priority items only, never a full inventory.
+- [ ] Record a stock count.
+- [ ] Record a delivery or receiving event.
+- [ ] Record **daily gross sales** as one number per day.
+- [ ] Calculate days-to-stockout.
+- [ ] Produce a reorder recommendation with quantity.
+- [ ] Record the owner's approve, change, or reject decision.
+- [ ] Record purchase and cash outflow, with receipt.
+- [ ] Calculate expected quantity and expose variance against a later actual count.
+- [ ] Record bounded owner action and verified outcome.
+- [ ] Add deterministic calculation tests.
+- [ ] Add RLS and cross-business isolation tests for every new table.
+
+**Exit condition:** The workflow connects count, delivery, daily sales, reorder recommendation, purchase, discrepancy, action, and verified outcome. Variance appears only once a baseline exists.
+
+## Milestone 3 — Permits, the statutory clock, and Setup mode
+
+A generic case tracker informed by the Pasig car-tint installation-services experience. No business type is out of scope.
+
+- [ ] Create compliance case and registration path.
+- [ ] Add task or requirement with dependency blockers.
+- [ ] Assign owner or representative.
+- [ ] Record evidence status.
+- [ ] Record fee type: official, service, third-party, or unknown.
+- [ ] Attach assessment or receipt.
+- [ ] Add temporary, conditional, and expiry dates.
+- [ ] Add timeline event and display the current next action.
+- [ ] Display unknowns without inventing an answer.
+- [ ] Record date of complete submission with receipt as evidence.
+- [ ] Classify each transaction as simple, complex, or highly technical.
+- [ ] Count working days against the RA 11032 §5 limits of 3, 7, and 20.
+- [ ] Alert the moment a statutory deadline passes.
+- [ ] Generate the RA 11032 §9 formal demand letter.
+- [ ] Implement Setup mode, in which only the registration path is visible.
+- [ ] Implement graduation to Running mode when the mayor's permit is marked issued.
+- [ ] Add tests for representative access limits.
+- [ ] Add a BMBE screening profile returning only: potentially eligible; likely not eligible based on supplied information; insufficient information; or professional or official review required.
+- [ ] Record dated asset snapshot and evidence status.
+- [ ] Exclude land from the displayed statutory asset computation.
+- [ ] Capture possible professional-services exclusion.
+- [ ] Store Certificate of Authority details separately from screening.
+- [ ] Track issue, expiry, and renewal dates.
+- [ ] Record claimed BIR tax treatment separately from certificate status.
+- [ ] Warn when BMBE income-tax exemption and the 8% income-tax option appear inconsistent.
+- [ ] Add tests proving that screening does not activate certification or tax exemption.
+
+**Exit condition:** A handoff recipient can see completed steps, pending steps, authority, documents, fees, dates, unknowns, and the next action. A business can be screened and tracked for BMBE without the application issuing a certificate or declaring a tax exemption. The statutory clock runs without claiming a guaranteed outcome.
+
+## Milestone 4 — Secure document vault
+
+Required by Milestone 3: the statutory clock depends on a stored submission receipt.
 
 - [ ] Create private storage bucket.
 - [ ] Add document metadata and linking tables.
@@ -56,69 +106,29 @@ Complete one milestone at a time. Do not build later features merely because the
 
 **Exit condition:** Documents are private by default and can be linked to either domain without duplicating the file.
 
-## Milestone 4 — Start & Comply reference slice
+## Milestone 5 — Taxes
 
-Build a generic case tracker informed by the Pasig car-tint installation-services experience.
+Readiness and estimation only. Organise and estimate, never assert and file.
 
-- [ ] Create compliance case.
-- [ ] Add task or requirement.
-- [ ] Assign owner or representative.
-- [ ] Record evidence status.
-- [ ] Record fee type:
-  - official;
-  - service;
-  - third-party;
-  - unknown.
-- [ ] Attach assessment or receipt.
-- [ ] Add temporary, conditional, and expiry dates.
-- [ ] Add timeline event.
-- [ ] Display current next action.
-- [ ] Display unknowns without inventing an answer.
-- [ ] Add tests for representative access limits.
-- [ ] Add a BMBE screening profile that can return only:
-  - potentially eligible;
-  - likely not eligible based on supplied information;
-  - insufficient information;
-  - professional or official review required.
-- [ ] Record dated asset snapshot and evidence status.
-- [ ] Exclude land from the displayed statutory asset computation.
-- [ ] Capture possible professional-services exclusion.
-- [ ] Store Certificate of Authority details separately from screening.
-- [ ] Track issue, expiry, and renewal dates.
-- [ ] Record claimed BIR tax treatment separately from certificate status.
-- [ ] Warn when BMBE income-tax exemption and the 8% income-tax option appear inconsistent.
-- [ ] Add tests proving that screening does not activate certification or tax exemption.
-
-**Exit condition:** A handoff recipient can see completed steps, pending steps, authority, documents, fees, dates, unknowns, and the next action. A business can also be screened and tracked for BMBE without the application issuing a certificate or declaring a tax exemption.
-
-## Milestone 5 — Operate & Decide reference slice
-
-Build the priority-stock and purchasing loop informed by DUO BREW in Mandaluyong City.
-
-- [ ] Create tracked priority item.
-- [ ] Record unit and latest count.
-- [ ] Create purchase need.
-- [ ] Owner approves, changes, or rejects.
-- [ ] Record purchase and outflow.
-- [ ] Attach receipt.
-- [ ] Record receiving quantity.
-- [ ] Calculate expected quantity.
-- [ ] Record later actual count.
-- [ ] Expose discrepancy.
-- [ ] Record bounded owner action.
-- [ ] Record outcome.
+- [ ] Running total of annual gross sales.
+- [ ] ₱3,000,000 VAT threshold monitor with a warning at ₱2.5M.
+- [ ] Percentage-tax estimate at 3% of quarterly gross sales, referencing BIR Form 2551Q.
+- [ ] 8% versus graduated comparison using recorded expenses, framed as an estimate for discussion.
+- [ ] Show every figure with its confirm-with-your-accountant boundary.
 - [ ] Add deterministic calculation tests.
 
-**Exit condition:** The workflow connects stock, purchase decision, cash outflow, receipt, receiving, discrepancy, action, and verified outcome.
+**Exit condition:** An owner sees an estimated liability and the ₱3M position without the application electing a tax option, asserting an amount owed, or preparing a filing.
 
-## Milestone 6 — PWA baseline and mobile hardening
+## Milestone 6 — Deadlines, PWA baseline, and packaging
 
+- [ ] Deadline and renewal engine, including the January renewal calendar.
 - [ ] Add web app manifest.
 - [ ] Add icons and installability requirements.
 - [ ] Add connectivity indicator.
 - [ ] Add safe application-shell caching.
-- [ ] Test common low-width viewports.
+- [ ] Test common low-width viewports, including 360px.
 - [ ] Test slow network behaviour.
+- [ ] TWA packaging for Play Store distribution.
 - [ ] Do not add offline write synchronisation yet.
 
 **Exit condition:** The prototype is installable and usable as a mobile web application while clearly communicating connectivity state.

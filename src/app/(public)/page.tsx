@@ -35,9 +35,12 @@ export default function PublicHomePage() {
         </div>
       </section>
 
-      <div>
+      <div className="flex flex-col gap-3 sm:flex-row">
         <Button asChild size="lg" className="w-full sm:w-auto">
-          <Link href="/dashboard">Open the prototype</Link>
+          <Link href="/sign-up">Create an account</Link>
+        </Button>
+        <Button asChild size="lg" variant="outline" className="w-full sm:w-auto">
+          <Link href="/sign-in">Sign in</Link>
         </Button>
       </div>
 

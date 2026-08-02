@@ -1,147 +1,241 @@
 # NegosyoOS PH Project Blueprint
 
+**Version 2.0 — supersedes v1 in full.** Replace `docs/PROJECT_BLUEPRINT.md` with this file.
+
 | Field | Current state |
 | --- | --- |
-| Product name | NegosyoOS PH — temporary working name |
+| Product name | NegosyoOS PH — temporary working name (DL-009) |
+| Project type | **Commercial venture.** Subscription revenue, Google Play distribution |
 | Repository | Single active product repository |
 | Phase | Phase 1A — Foundation Prototype |
-| Product structure | One application, two bounded domains |
-| Coding | Authorised for the narrow prototype |
-| First operational vertical | Not selected |
-| Commercial validation | Not established |
+| Product structure | One application, two engines, one shared data spine |
+| Coding | M0 and M1 complete; authorised for Milestone 2 (Stocks) |
+| First operational vertical | Coffee shop reference case (franchisee-operated) |
+| Commercial validation | **Not established.** Zero confirmed peso figures |
 | Final architecture | Not approved |
 | Final pricing | Not approved |
 
-## 1. Product thesis
+---
 
-NegosyoOS PH is one mobile-first, AI-assisted application intended to help Philippine MSME owners:
+## 1. What NegosyoOS is
 
-1. establish and register a business;
-2. understand and maintain permits, tax-readiness tasks, and other external obligations;
-3. operate the business with better visibility and control;
-4. detect shortages, discrepancies, missed tasks, and avoidable losses;
-5. make bounded, evidence-supported decisions;
-6. delegate selected work to properly authorised representatives;
-7. preserve documents, receipts, and decision history; and
-8. obtain qualified professional assistance only when genuinely needed.
+> NegosyoOS helps a small Filipino business owner know three things: **what to buy, what to file, and how much they owe.**
 
-The service principle is:
+Everything below is detail.
+
+The product serves owners who have no point-of-sale system, no bookkeeper on staff, and no reliable way to know whether they are losing money. It does not require them to buy hardware, hire anyone, or change how they sell.
+
+Service principle, carried forward from v1:
 
 > Software and AI assistance by default. Bring your own representative when preferred. Qualified professionals only when needed.
 
-## 2. One product, two bounded domains
+---
 
-### 2.1 Start & Comply
+## 2. The three features
 
-This domain handles the business’s external lifecycle:
+| Internal name | User-facing name | The owner's question it answers |
+|---|---|---|
+| Operate & Decide | **Stocks** | *Ano bibilhin ko, magkano, kailan?* |
+| Start & Comply | **Permits** | *Ano kailangan kong ayusin, kailan ang deadline?* |
+| Tax readiness | **Taxes** | *Magkano kaya babayaran ko?* |
 
-- business registration;
-- barangay and LGU processes;
-- zoning or locational requirements;
-- sanitary and fire-safety requirements;
-- BIR registration and tax-readiness organisation;
-- government assessments and official receipts;
-- temporary, conditional, and final permits;
-- renewals;
-- amendments;
-- branches;
-- authorised representatives;
-- business retirement or closure.
+**Never show internal names in the interface.** "Start & Comply" and "Operate & Decide" are project codenames. The user sees Stocks, Permits, Taxes.
 
-Detailed agency requirements are not universal product facts. They must be attached to an official source, jurisdiction, business context, effective date, and evidence status.
+Tax readiness is not a third engine. It is the **intersection** of the other two: operations captures the money data, compliance knows the deadlines, tax is what falls out. This is the reason the two domains belong in one application rather than two.
 
+---
 
-### 2.1.1 BMBE certification and incentives
+## 3. The data spine
 
-BMBE means Barangay Micro Business Enterprise under Republic Act No. 9178. It is a special certification or incentive status potentially available to qualified micro enterprises, not an alternative to the broader MSME classification.
+The owner enters data once. Three outputs come from it.
 
-The Start & Comply domain should eventually support BMBE as a time-bound business certification and incentive status, not as a separate legal entity type.
+```
+INPUT  (daily, target under 30 seconds)
+├── Gross sales — one number per day
+├── Purchases and expenses, with receipt
+└── Stock counts (weekly, priority items only)
+             │
+        ┌────┴────┐
+        ▼         ▼
+     STOCKS    PERMITS
+        │         │
+        └────┬────┘
+             ▼
+           TAXES
+```
 
-The product may organise:
+**The single daily gross-sales figure is load-bearing.** It is not a POS. It unlocks percentage tax, the 8% option comparison, the ₱3M VAT threshold monitor, and sales-driven demand forecasting. Without it, the product cannot compute anything tax-related.
 
-- owner-provided business activity;
-- self-reported asset snapshot;
-- land excluded from the statutory asset computation;
-- possible professional-services exclusion;
-- DTI or Negosyo Center application status;
-- Certificate of Authority number;
-- issuing office;
-- issue date;
-- expiry date;
-- renewal status;
-- supporting documents;
-- BIR treatment confirmation;
-- applicable and non-applicable benefit records;
-- unresolved conflicts requiring professional review.
+---
 
-The system may display **Potentially eligible — pending official confirmation** when a screening profile appears to fit.
+## 4. Two modes
 
-It must not display **BMBE qualified**, **tax exempt**, or an equivalent definitive status without recorded official evidence and any required BIR confirmation.
+The application changes shape based on where the business is in its lifecycle. This is not two apps; it is one app with two entry experiences.
 
-BMBE status must not be treated as replacing ordinary business, LGU, BIR, invoicing, recordkeeping, employee, or industry-specific requirements.
+### 4.1 Setup mode — before the business opens
 
-### 2.1.2 Enterprise classification model
+Only the registration path is visible.
 
-NegosyoOS must represent these dimensions separately:
+```
+Day 12 of about 28
+✅ DTI name registered
+✅ Lease signed
+🔴 Barangay clearance — blocked: location sketch not uploaded
+⏳ Mayor's permit — after barangay
+⏳ BIR registration — after mayor's permit
+Nagastos na: ₱4,280
+```
 
-- legal form;
-- enterprise size;
-- certification and incentive status;
-- tax registration and treatment;
-- operating model;
-- customer model.
+Stocks and Taxes display as *"Mabubuksan kapag bukas na ang tindahan mo."*
 
-Examples:
+**During the 2–4 week permit wait, the owner builds their item list and supplier list.** This is dead time they are already spending. By opening day their tracking is configured and they have a daily habit.
 
-- a Mandaluyong café may be a micro enterprise and may separately hold BMBE certification;
-- a Pasig car-tint installer may be a micro or small service business regardless of whether it serves individuals or companies;
-- an air-conditioning contractor serving banks and corporations may still itself be an MSME.
+### 4.2 Running mode — after the business opens
 
-A registered BMBE is generally also within the MSME sector, but not every MSME is a BMBE. BMBE should therefore be modelled as an additional certification and benefit status, not as a competing size category.
+All three features appear. The registration case moves to history with documents preserved.
 
+### 4.3 Graduation
 
-### 2.2 Operate & Decide
+Marking the mayor's permit as issued switches the mode:
 
-This domain handles internal daily operational control:
+> *"Congrats — bukas na ang negosyo mo. Ihanda natin yung stocks mo."*
 
-- stock, supplies, and materials;
-- purchases and receiving;
-- suppliers and price changes;
-- customer jobs or orders where relevant;
-- operational cash outflows;
-- expected-versus-actual comparison;
-- shortages and discrepancies;
-- bounded action recommendations;
-- owner decisions;
-- outcome verification;
-- supporting receipts and documents.
+An earned moment, not a settings toggle. It is also the natural conversion trigger from free to paid, since it coincides with the business beginning to earn.
 
-Its intended loop is:
+### 4.4 Schema consequence
 
-> Capture essential movements → compare expected and actual → expose shortages and discrepancies → recommend a bounded action → record the owner decision → verify the outcome.
+`businesses` requires `status` — `draft | registering | operating | closed` — and a nullable `legal_name`. A business in setup mode has no registered name yet, which is why the registered name is separate from the everyday `name` the owner already uses.
 
-### 2.3 Shared platform
+`businesses` was created in M1 and already carries `name`. These two columns therefore arrive by **`ALTER TABLE` in M2, not in a fresh `CREATE`**: `name` is kept exactly as it is, `legal_name` is added nullable, and `status` defaults to `operating` so the rows that already exist remain correct.
 
-Shared capabilities may include:
+---
 
-- user identity;
-- business and branch profiles;
-- memberships and roles;
-- authorised representatives;
-- document vault;
-- evidence metadata;
-- notifications;
-- audit history;
-- AI-assistance surfaces;
-- subscriptions;
-- multi-business switching;
-- offline capture and synchronisation.
+## 5. Architectural split
 
-Shared data does not erase domain boundaries.
+The single most important structural decision in the product.
 
-## 3. Product boundaries
+| | Permits (Start & Comply) | Stocks (Operate & Decide) |
+|---|---|---|
+| Shape | **Horizontal** — one model, all business types | **Vertical** — one model per archetype |
+| Composition | ~80% common trunk, ~20% industry tail | ~20% shared primitive, ~80% specific |
+| Applies to | Every business without exception | Configured per business type |
+| Commodity risk | High — Negosyo Centers give the information free | Low — no free alternative exists |
+| Pricing consequence | Free tier | Paid tier |
 
-The application must not:
+**No business type is out of scope for Permits.** A parking operator needs DTI/SEC → barangay clearance → mayor's permit → BIR → January renewal exactly like a carinderia. v1 deferred parking entirely; that was wrong.
+
+---
+
+## 6. The shared primitive: Reconciliation Ledger
+
+Not "inventory." Inventory is one instance of a general pattern: *something expected versus something actual.*
+
+| Business | Goes out | Should come back | The leak |
+|---|---|---|---|
+| Coffee shop | Ingredients | Sales | Spoilage, stockout |
+| Carinderia | Cooked food | Same-day sales | Spoilage — worst of the set |
+| Rice retail | Sacks | Kilos sold | Over-scooping, spillage, moisture |
+| Laundry | Customer items | Same items, claimed | Lost or unclaimed items |
+| Water refilling | Containers | Containers returned | Unreturned containers = capital loss |
+| Parking | Tickets | Cash | Uncollected, unticketed |
+| Aircon services | Completed jobs | Payment | Unbilled work, aged receivables |
+
+One engine, seven configurations. This replaces the "Par Ledger" framing from earlier drafts, which only covered physical stock.
+
+---
+
+## 7. Three doors
+
+Same requirement graph, three entry points.
+
+| Door | Who | Enters at | Mode |
+|---|---|---|---|
+| 1 | Pre-registration owner with capital deployed | Choice of legal form | Setup |
+| 2 | Already-registered MSME | January renewal calendar | Running |
+| 3 | Informal enterprise considering formalising | Choice of legal form, BMBE as incentive | Setup |
+
+Door 2 is the largest: roughly 1.24 million registered establishments nationwide, 99.6% of them MSMEs (DTI/PSA 2024), against approximately 49,000 new SEC company registrations in all of 2025. Door 2 also has a fixed annual deadline, which makes January the acquisition window.
+
+---
+
+## 8. What each feature actually sells
+
+### 8.1 Permits — the statutory clock
+
+The defensible feature is not a checklist. It is **RA 11032 enforcement.**
+
+RA 11032 §5 sets legally enforceable maximum processing times from the date of complete application submission: **3 working days** for simple transactions, **7** for complex, **20** for highly technical. §9 provides that where an agency misses the deadline without written notice of cause, the applicant may submit a formal written request to the agency head demanding issuance of the deemed-approved document, with the submission receipt attached, escalating to ARTA or the Civil Service Commission on refusal.
+
+What the software does that a counter clerk does not:
+
+1. Records the date of complete submission, with the receipt as evidence
+2. Classifies the transaction into the 3 / 7 / 20 bucket
+3. Counts working days automatically
+4. Alerts the moment the statutory deadline passes
+5. Generates the formal demand letter
+
+Plus the **dependency chain** — telling an owner at 9pm that tomorrow's barangay trip is wasted because the lease is unsigned. A Negosyo Center lists requirements; it does not track blockers in real time.
+
+### 8.2 Stocks — the buying decision
+
+Primary output is a purchase recommendation, **not** a variance report:
+
+> *Beans: about 3 days left. Order 8 kg — that's your usual week.*
+
+Variance is secondary, shown only after a baseline exists:
+
+> *Last week you used 17 kg. Usual is 11 kg.*
+
+**Ordering rationale:** an owner who has never measured a loss will not believe a loss report. They will believe a stockout prediction, because they can verify it on Thursday. Trust first, loss figures second.
+
+### 8.3 Taxes — readiness, not filing
+
+Reference facts, current as of 2026:
+
+- Percentage tax is **3%** of quarterly gross sales for non-VAT businesses under the ₱3M threshold, filed on BIR Form 2551Q. The 1% CREATE rate applied only July 2020 – June 2023 and has reverted.
+- Individuals under the ₱3M VAT threshold may elect **8%** on gross sales in excess of ₱250,000, in lieu of graduated rates and percentage tax.
+- Crossing **₱3,000,000** in annual gross sales makes VAT registration mandatory and voids the 8% option.
+- The ₱500 Annual Registration Fee was abolished effective 22 January 2024 (RA 11976, RR 7-2024). BIR Form 0605 is no longer filed for it, and the COR (Form 2303) no longer requires annual renewal.
+
+**The ₱3M threshold monitor is the highest-value, lowest-effort compliance feature in the product.** A growing business crosses ₱3M in October and learns from an accountant in April, after months of incorrect filings. A running total with a warning at ₱2.5M is trivial to build and high-stakes.
+
+**Hard boundary — organise and estimate, never assert and file:**
+
+✅ *"Gross sales this quarter: ₱612,400. At 3%, percentage tax would be about ₱18,372. Confirm with your accountant before filing."*
+❌ *"You owe ₱18,372. File 2551Q now."*
+
+The first is decision support. The second is regulated tax practice.
+
+The **8% versus graduated comparison** is a legitimate paid feature — most micro owners do not know which is cheaper, and the answer depends on their expense ratio, which the purchase records already capture. It must be framed as an estimate for discussion, never as an election.
+
+---
+
+## 9. AI role and help model
+
+### 9.1 Do not build a knowledge base
+
+Rejected. A searchable article library requires hundreds of articles, constant maintenance as rules change, duplicates freely available search results, and does not match how owners behave. Owners get stuck on a specific step and want help at that step.
+
+### 9.2 Build in-context help
+
+An *"Ano ito?"* affordance beside the item that confused them. Two sentences about that exact thing. No articles, no search box.
+
+### 9.3 The AI rule
+
+> **AI explains. AI does not decide.**
+
+✅ *"This is Barangay Clearance. Kailangan mo ito bago ka makapag-apply sa City Hall."*
+❌ *"You owe ₱18,372. File it now."*
+
+AI is invisible plumbing behind in-context help, not a tab, mascot, or chat bubble. **Do not lead public-facing description with AI.** Owners buy *"alam mo na kung ano bibilhin,"* not "AI-powered platform."
+
+For high-impact outputs, continue to show: what the source says; what it does not say; the applicable inference; conflicts; unknowns; the bounded next action; and the evidence source and version.
+
+---
+
+## 10. Product boundaries
+
+Carried forward from v1 §3 unchanged. The application must not:
 
 - claim to be a government platform;
 - guarantee permit, tax, or registration outcomes;
@@ -155,321 +249,196 @@ The application must not:
 - normalise fixers, facilitation payments, unofficial gifts, or unreceipted government charges;
 - treat all LGUs or MSMEs as having identical processes.
 
-## 4. User and service model
+Additional boundary: **the product does not advise what business to start.** Setup mode begins after that decision is made.
 
-### Owner self-service
+---
 
-The default user completes ordinary tasks with software and AI guidance.
+## 11. Reference cases
 
-The system should explain:
+### 11.1 Coffee shop — DUO BREW, Mandaluyong (selected first vertical)
 
-- what the task is;
-- why it may apply;
-- the supporting evidence;
-- what remains unknown;
-- documents to prepare;
-- questions to ask;
-- result to record;
-- next bounded action.
+Franchisee-operated: they own the store, equipment, lease, staff, and P&L; they license the brand and buy supplies from the franchisor.
 
-### Owner-appointed representative
+**Confirmed by operator:**
+- **The franchisee decides their own order quantities.** (Critical — a real decision exists for software to support.)
+- No POS.
+- Buying method is *"kung anong makita nilang kaonti."*
+- Two-sided trap: understock → drinks unavailable; overstock → *sayang*.
+- Operated by two adults with a 15-year-old helping occasionally.
 
-The owner may assign a specific task to a family member, employee, bookkeeper, accountant, partner, liaison, or other properly authorised person.
+**Not obtained:** any peso figure for monthly loss.
 
-The system may track:
+**Franchise is a feature subset, not a special case.** A franchisee makes *fewer* decisions than an independent shop, not stranger ones — supplier, price, and catalog are fixed; quantity and timing remain theirs. Building for the subset means nothing is wasted when expanding to independents. Building the reverse would produce supplier-comparison features that are dead weight for franchisees.
 
-- principal;
-- representative;
-- agency or counterparty;
-- authorised actions;
-- exclusions;
-- authorisation document;
-- effective and expiry dates;
-- ID and signature requirements;
-- notarisation or SPA requirements;
-- revocation;
-- action history.
+**Distribution advantage:** every branch of the same brand shares SKUs, pack sizes, order windows, and lead times. One item list serves every branch nationwide, which directly attacks the data-debt constraint in §12.
 
-AI cannot become the representative.
+**Counting must work for whoever is free** — including the 15-year-old. Large tap targets, numeric keypad, under two minutes.
 
-### Optional professional escalation
+### 11.2 Car-tint installation services — Pasig
 
-A lawyer, CPA, accountant, bookkeeper, or other qualified person may be engaged when a task requires professional judgment, certification, signing, representation, dispute handling, or high-risk review.
+Founder acted as representative during part of the permit process.
 
-A case manager is not mandatory for normal use.
+**Confirmed:** owns his premises, so no rent; requirements were complete, so one City Hall trip; assessed ₱5,123.50; temporary sanitary paperwork; BFP instructions; apparent 90-day temporary permit.
 
-## 5. AI-assisted roles
+**Null results:** no dead-rent cost applies to him, and he had no idea what advance knowledge of the steps would have saved.
 
-Potential product surfaces:
-
-- Registration Navigator
-- Tax Compliance Guide
-- Legal Information Guide
-- Document Review Assistant
-- Government Liaison Guide
-- Operations Analyst
-- Evidence Reviewer
-
-For high-impact outputs, show:
-
-1. what the source says;
-2. what it does not say;
-3. applicable inference;
-4. conflicts;
-5. unknowns;
-6. bounded next action;
-7. evidence source and version.
-
-## 6. Reference evidence cases
-
-### 6.1 Pasig car-tint installation services
-
-**Firsthand user observation**
-
-The founder assisted a friend whose car-tint installation services business is located in Pasig City. The founder continued part of the registration or permit process as a representative after the friend had completed unknown earlier steps.
-
-Known observations:
-
-- Pasig business-registration or permit processing;
-- assessed amount of ₱5,123.50;
-- temporary sanitary-permit paperwork;
-- BFP-related instructions;
-- poor owner-to-representative handoff;
-- unclear completed and pending stages;
-- unclear fee composition;
-- apparent 90-day temporary permit;
-- unclear reasons for sanitary and fire requirements.
-
-Unknown:
-
-- exact classification;
-- declared premises;
-- official fee components;
-- exact permit basis;
-- current case status.
+**Important qualifier:** he was prepared partly *because the founder helped him*. He cannot serve as evidence for unassisted registrants.
 
 The system must never explain the ₱5,123.50 without the actual assessment and receipt.
 
-**Prototype use:** Create a generic compliance case with tasks, evidence, fees, document links, temporary-validity dates, and representative handoff. Do not encode Pasig-specific rules as nationwide rules.
+### 11.3 Air-conditioning services — B2B
 
-### 6.2 DUO BREW — Mandaluyong City
+Corporate and bank clients. Client size does not determine the provider's own enterprise size.
 
-**Operator-reported evidence**
+**Not yet interviewed.** Hypothesised workflows — quotations, work orders, technician assignment, equipment history, parts, completion evidence, invoicing, receivables, preventive-maintenance contracts — remain unconfirmed. Preserved as the job-centred validation case after the inventory-centred flow is field-tested.
 
-- No POS.
-- Uses spreadsheets.
-- Primarily operated by a husband and wife.
-- Difficulty knowing what ingredients and supplies remain.
-- Difficulty deciding what to buy and how much.
-- Outflows appear closely connected to inventory and purchasing.
+---
 
-**Analyst inference**
+## 12. Data debt constraint
 
-> Uncertain stock → uncertain purchase need → reactive buying → unpredictable outflows → shortage, overbuying, or unexplained-spending risk.
+An already-operating business arrives with existing stock, suppliers, and no baseline count. **Onboarding must never require entering a full inventory.** The system onboards 8–12 priority items only. If first-run setup exceeds 20 minutes, the notebook wins.
 
-**Prototype use:** Build a priority-item count, purchase-need, outflow, receipt, receiving, and discrepancy flow.
+New owners in Setup mode have **zero data debt**, because onboarding happens during the permit wait. This is a structural advantage unique to Door 1.
 
-DUO BREW is not a confirmed pilot and does not select CaféOS.
+---
 
-### 6.3 Air-conditioning services business
+## 13. Evidence status
 
-**Firsthand user observation**
+| Claim | Status | Source |
+|---|---|---|
+| Franchisee decides order quantity | **Confirmed** | DUO BREW operator |
+| Buying method is eyeballing what looks low | **Confirmed** | DUO BREW operator |
+| Two-sided trap: stockout vs. sayang | **Confirmed** | DUO BREW operator |
+| No POS | **Confirmed** | DUO BREW operator |
+| Peso value of monthly loss | **No figure given** | — |
+| Car-tint owner has no rent | **Confirmed** | Friend |
+| He was prepared; one trip | **Confirmed** | Friend |
+| Value of knowing steps in advance | **"Wala siyang ideya"** | Friend |
+| 3 / 7 / 20 clock and deemed-approved remedy | **Confirmed** | RA 11032 §5, §9 |
+| Percentage tax 3%, 8% option, ₱3M threshold | **Confirmed** | NIRC as amended; BIR |
+| ARF abolished, COR permanent | **Confirmed** | RA 11976, RR 7-2024 |
+| ~1.24M registered establishments, 99.6% MSME | **Confirmed** | DTI/PSA 2024 |
+| Unprepared registrants lose days | **No evidence** | — |
+| Cousin has unbilled completed work | **Not yet asked** | — |
+| MOQ / pack size forces overbuying | **Hypothesis** | — |
+| Existing competitors already solve this | **Never checked** | — |
 
-The founder’s cousin operates an air-conditioning installation, cleaning, and repair services business. Its clients are mostly corporate organisations and banks.
+**Two confirmed null results.** Neither interviewee produced a peso figure. This must remain visible and must not be quietly dropped from future revisions.
 
-The size of those clients does not determine the service provider’s own enterprise-size classification.
+---
 
-**Analyst hypotheses pending interview**
+## 14. Open problems
 
-Possible workflows include:
+**A — Interview 1B (DUO BREW), outstanding**
+1. Minimum order quantity, and whether it exceeds weekly usage
+2. Whether pack sizes can be split
+3. Order window and lead time
+4. Cost of a rush order on stockout
+5. Whether the franchisor already provides an ordering system — if so, that is the real incumbent
+6. Whether the franchise agreement restricts third-party tools
+7. Referral to one independent shop for comparison
 
-- corporate client and contact records;
-- client branches and service sites;
-- service requests;
-- quotations;
-- work orders;
-- technician scheduling;
-- air-conditioning unit and equipment history;
-- parts and materials;
-- installation, cleaning, and repair stages;
-- preventive-maintenance schedules;
-- job-completion photos, reports, and client acceptance;
-- invoices;
-- accounts receivable;
-- collections;
-- recurring maintenance contracts.
+**B — Cousin interview, not started**
+8. Pesos in completed-but-unbilled work
+9. Standard payment terms from bank and corporate clients
+10. Whether preventive-maintenance renewals are being missed
 
-These workflow details are not yet operator-confirmed.
+**C — Requires someone not yet met**
+11. Whether an unprepared registrant actually loses days. One referral needed.
 
-**Prototype use:** Preserve this as a structurally different, job-centred B2B service reference case for later validation after the inventory-centred DUO BREW flow. Do not build the full air-conditioning workflow during the initial Phase 1A milestones.
+**D — Documents in hand but not supplied**
+12. Composition of the ₱5,123.50 Pasig assessment — how much is standardisable versus LGU-specific
 
+**E — Never researched**
+13. **Competitor landscape.** The founding critique was that many companies already do this. Never verified. Unknown: what existing PH MSME inventory and compliance apps cost, who uses them, why owners abandon them.
+14. Whether franchisors would block, tolerate, or welcome a third-party tool used by franchisees
 
-## 7. Operational vertical hypotheses
+**F — Founder decisions**
+15. Final name — `NegosyoOS PH` remains unscreened (DL-009)
+16. Google Play billing rate and its effect on the pricing floor
 
-The carried-forward candidate set is:
+---
 
-1. LaundryOS
-2. WaterStationOS
-3. FoodBusinessOS
-4. CaféOS
-5. CarinderiaOS
-6. BakeryOS
-7. RetailOS
-8. RiceStoreOS
-9. MotorShopOS
-10. ParkingOperationOS
-11. SalonOS
-12. HardwareOS / ConstructionSupplyOS
+## 15. Build order
 
-None is selected.
+Corrected on 2026-08-02 against the actual state of the repository. Authentication and tenancy were completed ahead of Stocks and are retained rather than rebuilt, so there is no later migration of data behind real ownership to perform. See DL-025.
 
-Compare candidates using:
+| Milestone | Content | Status |
+|---|---|---|
+| **M0** | Repository and application scaffold | ✅ Complete |
+| **M1** | Auth, tenancy, RLS, audit spine | ✅ Complete |
+| **M2** | Stocks: items, counts, deliveries, **daily gross sales**, reorder forecast, days-to-stockout. Variance secondary. | Next |
+| **M3** | Permits: registration path generator with the RA 11032 clock built in. Setup mode. | |
+| **M4** | Document vault (required for submission receipts the clock depends on) | |
+| **M5** | Taxes: ₱3M threshold monitor, percentage-tax estimate, 8% vs. graduated comparison | |
+| **M6** | Deadline and renewal engine; PWA baseline; TWA packaging for Play Store | |
+| **M7** | Field-test preparation | |
 
-- pain frequency;
-- problem cost;
-- decision clarity;
-- data availability;
-- encoding burden;
-- speed to value;
-- ability and willingness to pay;
-- access to owners and records;
-- competition;
-- solo-builder feasibility;
-- hardware or integration burden;
-- usefulness for testing a structurally different second workflow.
+Stocks is built on the real authentication and tenancy delivered in M1. Every Stocks table uses the established membership-based RLS pattern; no development shortcut stands in for a real membership.
 
+### Why the statutory clock is not M1
 
+The RA 11032 clock is legally grounded rather than hypothesis-grounded and produces value on day one with no baseline period. It is the better *feature*.
 
-## 7.1 Operating and customer profiles
+But it is **episodic** — it fires only while an application is pending, roughly once a year. A tool opened once a year cannot sustain a monthly subscription. This is the identical argument that removed BMBE from the paid tier and must be applied consistently.
 
-The product should not assume that every MSME is consumer-facing or store-based.
+The buying assistant is weaker per use but used weekly. **Subscriptions live on habit, not sharpness.**
 
-Possible profiles include:
+---
 
-- owner-operated B2C establishment;
-- home-based or mobile service;
-- inventory-centred retail or food business;
-- job-centred service contractor;
-- B2B supplier or contractor serving corporations and banks;
-- mixed goods-and-services business;
-- growing team or multi-site business.
+## 16. Pricing hypothesis
 
-The customer’s size and the business owner’s enterprise size are separate facts.
+Not approved. Billing out of scope until after M7.
 
-## 8. Inventory versus jobs and orders
+| Tier | Contains | Logic |
+|---|---|---|
+| Free | Registration path, Setup mode, deadline reminders, RA 11032 clock, BMBE path | Government channels provide the underlying information free. Competing against free is unwinnable. |
+| Paid | Buying assistant, variance, cost history, price-change alerts, tax readiness, ₱3M monitor | No free alternative exists. |
 
-Long-term direction: support businesses that manage physical items, customer work, or both.
+Setup mode functions as a free trial that costs nothing to provide, with opening day as the natural conversion trigger.
 
-The final operational architecture remains unresolved.
+**Unit economics to hold in view:** at ₱399/month net of Google Play's cut, approximately 90 paying subscribers replace a ₱30,000 monthly salary. The target is ninety paying owners, not "users."
 
-Do not begin with a universal inventory-and-job engine.
+---
 
-Prototype concrete flows first:
+## 17. Kill criteria
 
-- inventory-centred DUO BREW reference flow;
-- later a structurally different job-centred reference flow, with the air-conditioning services case as a leading discovery candidate.
+- If no interviewed owner names a peso figure for a loss, stop. Two have already failed to.
+- If three owners see the reorder recommendation and none finds it useful, the buying assistant is not solving a felt problem.
+- If an owner reads a generated registration plan and says they could have gotten it free at a Negosyo Center, the dependency and clock logic is too shallow.
+- If no owner will pay after M7, ship free as portfolio work — but decide it deliberately.
 
-Then determine what is genuinely reusable.
+Because this is a commercial venture, these are operative, not documentation.
 
-## 9. POS and affordability
+---
 
-Do not assume every business has or needs a POS.
+## 18. Risks
 
-Support may include:
+1. **No peso figure ever materialises.** Two owners have failed to produce one.
+2. **The franchisor already provides an ordering system**, removing the wedge for the selected vertical.
+3. **The competitor gap is real.** Never checked.
+4. **eGovPH and eBOSS close the compliance gap.** Government is building in this lane; Permits has a shelf life.
+5. **Solo-builder capacity.** Three features, seven milestones, one person, while job hunting.
 
-- manual capture;
-- spreadsheet import;
-- daily POS summaries;
-- CSV import;
-- later integrations.
+Risk 5 is the most probable and the least discussed.
 
-The product should recommend the least costly setup that reliably solves the actual problem.
+---
 
-Consider:
-
-- capital;
-- cash flow;
-- transaction volume;
-- staff;
-- locations;
-- cost of current errors;
-- existing systems;
-- maintenance;
-- franchise restrictions;
-- connectivity;
-- device capability;
-- willingness to pay.
-
-## 10. Phase 1A prototype scope
-
-### In scope
-
-Shared:
-
-- application shell;
-- authentication;
-- owner profile;
-- business profile;
-- business membership;
-- domain-switching dashboard;
-- document metadata and secure upload;
-- audit event baseline.
-
-Start & Comply reference slice:
-
-- create compliance case;
-- add requirement or task;
-- assign owner or representative;
-- record evidence status;
-- record official or unknown fee;
-- attach receipt or document;
-- record temporary or expiry date;
-- view timeline and next action;
-- run a non-binding BMBE eligibility screening;
-- record BMBE Certificate of Authority details when available;
-- track BMBE expiry and renewal;
-- record whether claimed BIR treatment is unconfirmed, document-supported, or professionally reviewed;
-- surface a warning when BMBE treatment and an 8% income-tax selection appear inconsistent.
-
-Operate & Decide reference slice:
-
-- create priority tracked item;
-- record stock count;
-- propose purchase need;
-- owner approves, changes, or rejects;
-- record purchase outflow;
-- attach receipt;
-- record receiving;
-- calculate expected-versus-actual quantity;
-- create discrepancy and bounded action;
-- record outcome.
-
-### Out of scope
-
-- nationwide requirement database;
-- automatic BMBE certification or tax-exemption activation;
-- direct BIR or LGU filing;
-- automatic tax return preparation;
-- full bookkeeping;
-- complete POS;
-- payroll;
-- all twelve vertical packs;
-- advanced AI automation;
-- native mobile application;
-- multi-branch complexity;
-- paid professional marketplace;
-- subscription billing;
-- final offline write synchronisation.
-
-## 11. Success criteria
+## 19. Success criteria
 
 The prototype succeeds when:
 
 - one owner can create and access only their authorised business;
-- a user can understand and switch between both domains;
-- the compliance reference slice preserves tasks, evidence, fee source, temporary validity, handoff, and bounded BMBE status tracking without claiming automatic eligibility or exemption;
-- the operations reference slice connects count, purchase decision, outflow, receipt, receiving, discrepancy, action, and result;
+- **an owner discovered a loss or a blocked step they did not already know about;**
+- the Stocks flow connects count, delivery, daily sales, reorder recommendation, and verified outcome;
+- the Permits flow preserves tasks, evidence, fee source, temporary validity, handoff, and statutory deadline without claiming guaranteed outcomes;
 - every exposed table is protected by tested RLS;
 - documents are private by default;
-- the interface is usable on a low-cost Android-sized viewport;
+- the interface is usable on a 360px Android viewport;
 - no screen implies guaranteed compliance, legal advice, tax certification, or confirmed market validation.
+
+---
+
+## 20. Compliance caveat
+
+Every requirement, fee, deadline, rate, and form reference in this document is a **reference statement, not a legal guarantee.** LGU processes differ, RDO practice differs, and rules change. Each requirement node carries `official_source`, `effective_date`, and `verified_date` for this reason. §10 boundaries apply without exception.

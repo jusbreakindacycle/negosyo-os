@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
+import type { Database } from "@/types/database";
+
 import { getSupabaseEnv } from "./env";
 
 /**
@@ -13,7 +15,7 @@ export async function createClient() {
   const { url, publishableKey } = getSupabaseEnv();
   const cookieStore = await cookies();
 
-  return createServerClient(url, publishableKey, {
+  return createServerClient<Database>(url, publishableKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -24,9 +26,9 @@ export async function createClient() {
             cookieStore.set(name, value, options);
           }
         } catch {
-          // Server Components cannot set cookies. This is safe to ignore when
-          // a Proxy or Server Action is responsible for refreshing the session.
-          // Session refresh itself is not part of this milestone.
+          // Server Components cannot set cookies. Safe to ignore: src/proxy.ts
+          // refreshes the session on every matched request, and Server Actions
+          // write cookies directly.
         }
       },
     },
