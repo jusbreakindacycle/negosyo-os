@@ -9,6 +9,23 @@ import { resolveActiveBusinessId } from "@/features/businesses/resolve-active-bu
 import { requireUser } from "@/lib/auth/current-user";
 
 /**
+ * Every route in this group depends on the request's session, so none of them
+ * can be prerendered at build time.
+ *
+ * Without this, Next.js tries to statically export /dashboard and /onboarding.
+ * It usually gets away with it locally by accident: createClient() reads
+ * cookies(), and that read is what marks the route dynamic. But the Supabase
+ * environment check runs *before* the cookies() call, so on a machine without
+ * those variables -- CI, which has no .env.local -- it throws first, the
+ * dynamic signal is never emitted, and the build fails while prerendering a
+ * page that was never meant to be static.
+ *
+ * Declaring it here states the intent instead of relying on that ordering,
+ * which would otherwise break again the moment the two lines were swapped.
+ */
+export const dynamic = "force-dynamic";
+
+/**
  * Application shell for signed-in people.
  *
  * `requireUser()` runs here rather than relying on the Proxy alone. The Proxy
