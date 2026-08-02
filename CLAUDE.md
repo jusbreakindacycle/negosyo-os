@@ -63,11 +63,11 @@ This does not approve:
 - a nationwide rules database;
 - subscription billing.
 
-### Unresolved: the first operational vertical
+### Resolved: the first reference case
 
-`docs/PROJECT_BLUEPRINT.md` v2.0 names the coffee shop reference case as the selected first vertical. DL-006, an approved project constraint, records the first vertical as **unselected** and states that the DUO BREW workflow does not select CaféOS.
+The coffee shop is the selected first reference case (DL-027, superseding only the "vertical unselected" clause of DL-006).
 
-These conflict. The conflict is recorded rather than resolved, because superseding an approved constraint is a founder decision and needs its own decision-log entry. Until that entry exists, treat the coffee shop as the **reference case being built against**, not as an approved market selection, and do not write "first vertical selected" into product prose.
+DL-006's second clause remains binding: **the DUO BREW workflow does not select CaféOS.** Selecting a reference case is choosing what to build against, not narrowing the product to cafés. Permits stays horizontal and applies to every business type without exception (DL-032). No café-specific vocabulary, column, or hard-coded item enters the shared spine; coffee-shop specifics live in seed data and per-business configuration.
 
 ## Coding discipline
 
@@ -87,6 +87,16 @@ These conflict. The conflict is recorded rather than resolved, because supersedi
 - Verify RLS against a real database. A passing test is only evidence if the negative case has been observed to fail for the intended reason (DL-026).
 - Treat document access as sensitive by default.
 - Keep domain language understandable to ordinary business owners.
+
+### Tool output
+
+Filter tool output at the source. Do not dump whole payloads into context —
+grep, head, or parse down to the lines that matter. Parse TAP output to
+failures only. Never cat a generated types file, an extension list, or a
+full lockfile.
+
+Reason: two responses stalled mid-stream this session, both immediately
+after very large tool results. Smaller payloads reduce the exposure.
 
 ## Domain boundaries
 

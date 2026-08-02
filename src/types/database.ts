@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Types for the tables and functions created in supabase/migrations.
  *
  * GENERATED FILE -- do not hand-edit. Regenerate after every migration:
@@ -181,6 +181,51 @@ export type Database = {
           },
         ]
       }
+      daily_sales: {
+        Row: {
+          business_id: string
+          created_at: string
+          created_by: string | null
+          gross_amount: number
+          id: string
+          sales_date: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          created_by?: string | null
+          gross_amount: number
+          id?: string
+          sales_date: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          created_by?: string | null
+          gross_amount?: number
+          id?: string
+          sales_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_sales_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_sales_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -307,6 +352,46 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "tracked_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      delete_daily_sales: {
+        Args: { p_id: string }
+        Returns: {
+          business_id: string
+          created_at: string
+          created_by: string | null
+          gross_amount: number
+          id: string
+          sales_date: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "daily_sales"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_daily_sales: {
+        Args: {
+          p_business_id: string
+          p_gross_amount: number
+          p_sales_date?: string
+        }
+        Returns: {
+          business_id: string
+          created_at: string
+          created_by: string | null
+          gross_amount: number
+          id: string
+          sales_date: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "daily_sales"
           isOneToOne: true
           isSetofReturn: false
         }
