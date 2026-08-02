@@ -65,7 +65,7 @@ select col_is_null('public', 'profiles', 'display_name',
 
 select columns_are(
   'public', 'businesses',
-  array['id', 'name', 'created_by', 'created_at', 'updated_at'],
+  array['id', 'name', 'legal_name', 'status', 'created_by', 'created_at', 'updated_at'],
   'businesses has exactly the expected columns'
 );
 select col_type_is('public', 'businesses', 'id', 'uuid',
@@ -80,6 +80,17 @@ select col_is_null('public', 'businesses', 'created_by',
   'businesses.created_by is nullable, so deleting an account keeps the business');
 select col_has_default('public', 'businesses', 'id',
   'businesses.id is generated');
+
+-- A business in Setup mode has no registered name yet, so a not-null
+-- constraint here would only force one to be invented.
+select col_is_null('public', 'businesses', 'legal_name',
+  'businesses.legal_name is nullable throughout Setup mode');
+select col_type_is('public', 'businesses', 'legal_name', 'text',
+  'businesses.legal_name is text');
+select col_not_null('public', 'businesses', 'status',
+  'businesses.status is not null');
+select col_has_default('public', 'businesses', 'status',
+  'businesses.status defaults, so rows created before Milestone 2 stayed valid');
 
 select columns_are(
   'public', 'business_memberships',
@@ -128,6 +139,11 @@ select hasnt_column('public', 'audit_events', 'updated_at',
 select has_type('public', 'business_role', 'business_role type exists');
 select enum_has_labels('public', 'business_role', array['owner'],
   'business_role carries only owner in this milestone');
+
+select has_type('public', 'business_status', 'business_status type exists');
+select enum_has_labels('public', 'business_status',
+  array['draft', 'registering', 'operating', 'closed'],
+  'business_status covers the whole lifecycle, including closure');
 
 select has_type('public', 'audit_domain', 'audit_domain type exists');
 select enum_has_labels('public', 'audit_domain',
