@@ -280,218 +280,211 @@ select is(
 );
 
 
--- ---------------------------------------------------------------------------
+------------------------------------------------------------------------------
 -- Correcting a day
--- ---------------------------------------------------------------------------
+------------------------------
 -- An owner who typed 12,750.50 and meant 45,000.00 re-enters the day. They
 -- must not meet a unique-violation error, and the quarter must not end up
 -- counting both figures.
-
 select is(
-  pg_temp.as_user('11111111-1111-4111-8111-111111111111',
-    'select (public.record_daily_sales(
-       ''55555555-5555-4555-8555-555555555555'', 45000.00)).gross_amount::text'),
-  '[{"gross_amount": "45000.00"}]'::jsonb,
-  're-entering today replaces the figure instead of failing'
+pg_temp.as_user('11111111-1111-4111-8111-111111111111',
+'select (public.record_daily_sales(
+''55555555-5555-4555-8555-555555555555'', 45000.00)).gross_amount::text'),
+'[{"gross_amount": "45000.00"}]'::jsonb,
+'re-entering today replaces the figure instead of failing'
 );
 
 select results_eq(
-  $$ select count(*)::int from public.daily_sales
-      where business_id = '55555555-5555-4555-8555-555555555555' $$,
-  $$ values (3) $$,
-  'the correction overwrote the day rather than adding a second row for it'
+$$ select count(*)::int from public.daily_sales
+where business_id = '55555555-5555-4555-8555-555555555555' $$,
+$$ values (3) $$,
+'the correction overwrote the day rather than adding a second row for it'
 );
 
 -- The replaced figure survives in the audit trail. It fed a tax estimate for
 -- as long as it stood, so "what did it say before" has to be answerable.
 select results_eq(
-  $$ select action, metadata->>'previous_gross_amount'
-       from public.audit_events where action = 'daily_sales.corrected' $$,
-  $$ values ('daily_sales.corrected'::text, '12750.50'::text) $$,
-  'a correction records the figure it replaced'
+$$ select action, metadata->>'previous_gross_amount'
+from public.audit_events where action = 'daily_sales.corrected' $$,
+$$ values ('daily_sales.corrected'::text, '12750.50'::text) $$,
+'a correction records the figure it replaced'
 );
 
 
--- ---------------------------------------------------------------------------
+------------------------------
 -- Isolation
--- ---------------------------------------------------------------------------
-
+------------------------------
 select is(
-  pg_temp.as_user('22222222-2222-4222-8222-222222222222',
-    'select gross_amount from public.daily_sales order by sales_date'),
-  '[]'::jsonb,
-  'an outsider sees none of another business''s takings'
+pg_temp.as_user('22222222-2222-4222-8222-222222222222',
+'select gross_amount from public.daily_sales order by sales_date'),
+'[]'::jsonb,
+'an outsider sees none of another business''s takings'
 );
 
 select is(
-  pg_temp.as_user('11111111-1111-4111-8111-111111111111',
-    'select gross_amount::text from public.daily_sales order by sales_date'),
-  '[{"gross_amount": "0.00"}, {"gross_amount": "9800.00"},
-    {"gross_amount": "45000.00"}]'::jsonb,
-  'the owner sees exactly their own days, in date order'
+pg_temp.as_user('11111111-1111-4111-8111-111111111111',
+'select gross_amount::text from public.daily_sales order by sales_date'),
+'[{"gross_amount": "0.00"}, {"gross_amount": "9800.00"},
+{"gross_amount": "45000.00"}]'::jsonb,
+'the owner sees exactly their own days, in date order'
 );
 
 select throws_ok(
-  $$ select pg_temp.as_user('22222222-2222-4222-8222-222222222222',
-       'select (public.record_daily_sales(
-          ''55555555-5555-4555-8555-555555555555'', 1000.00)).id') $$,
-  '42501',
-  'not_a_member',
-  'an outsider cannot record sales into a business they do not belong to'
+$$ select pg_temp.as_user('22222222-2222-4222-8222-222222222222',
+'select (public.record_daily_sales(
+''55555555-5555-4555-8555-555555555555'', 1000.00)).id') $$,
+'42501',
+'not_a_member',
+'an outsider cannot record sales into a business they do not belong to'
 );
 
 select throws_ok(
-  $$ select pg_temp.as_user(null,
-       'select (public.record_daily_sales(
-          ''55555555-5555-4555-8555-555555555555'', 1000.00)).id') $$,
-  '42501',
-  'auth_required',
-  'the record RPC refuses to run without a session'
+$$ select pg_temp.as_user(null,
+'select (public.record_daily_sales(
+''55555555-5555-4555-8555-555555555555'', 1000.00)).id') $$,
+'42501',
+'auth_required',
+'the record RPC refuses to run without a session'
 );
 
 -- Direct writes stay shut, so a mistake in a policy cannot open one on its own.
 select throws_ok(
-  $$ select pg_temp.exec_as('11111111-1111-4111-8111-111111111111',
-       'insert into public.daily_sales (business_id, sales_date, gross_amount)
-        values (''55555555-5555-4555-8555-555555555555'',
-                ''2026-01-15'', 1000.00)') $$,
-  '42501',
-  null,
-  'even a member cannot insert a day of sales directly'
+$$ select pg_temp.exec_as('11111111-1111-4111-8111-111111111111',
+'insert into public.daily_sales (business_id, sales_date, gross_amount)
+values (''55555555-5555-4555-8555-555555555555'',
+''2026-01-15'', 1000.00)') $$,
+'42501',
+null,
+'even a member cannot insert a day of sales directly'
 );
 
 select throws_ok(
-  $$ select pg_temp.exec_as('11111111-1111-4111-8111-111111111111',
-       'update public.daily_sales set gross_amount = 999999.00') $$,
-  '42501',
-  null,
-  'even a member cannot rewrite a day of sales directly'
+$$ select pg_temp.exec_as('11111111-1111-4111-8111-111111111111',
+'update public.daily_sales set gross_amount = 999999.00') $$,
+'42501',
+null,
+'even a member cannot rewrite a day of sales directly'
 );
 
 select throws_ok(
-  $$ select pg_temp.exec_as('11111111-1111-4111-8111-111111111111',
-       'delete from public.daily_sales') $$,
-  '42501',
-  null,
-  'even a member cannot delete a day of sales directly'
+$$ select pg_temp.exec_as('11111111-1111-4111-8111-111111111111',
+'delete from public.daily_sales') $$,
+'42501',
+null,
+'even a member cannot delete a day of sales directly'
 );
 
 select results_eq(
-  $$ select count(*)::int, sum(gross_amount) from public.daily_sales $$,
-  $$ values (3, 54800.00::numeric) $$,
-  'every rejected write above left the takings untouched'
+$$ select count(*)::int, sum(gross_amount) from public.daily_sales $$,
+$$ values (3, 54800.00::numeric) $$,
+'every rejected write above left the takings untouched'
 );
 
 -- The same calendar day in a different business is a different row. Two shops
 -- trade on the same date.
 select is(
-  pg_temp.as_user('22222222-2222-4222-8222-222222222222',
-    'select (public.record_daily_sales(
-       ''66666666-6666-4666-8666-666666666666'', 3200.00)).gross_amount::text'),
-  '[{"gross_amount": "3200.00"}]'::jsonb,
-  'two businesses may each record the same day'
+pg_temp.as_user('22222222-2222-4222-8222-222222222222',
+'select (public.record_daily_sales(
+''66666666-6666-4666-8666-666666666666'', 3200.00)).gross_amount::text'),
+'[{"gross_amount": "3200.00"}]'::jsonb,
+'two businesses may each record the same day'
 );
 
 
--- ---------------------------------------------------------------------------
+------------------------------
 -- Validation
--- ---------------------------------------------------------------------------
-
+------------------------------
 select throws_ok(
-  $$ select pg_temp.as_user('11111111-1111-4111-8111-111111111111',
-       'select (public.record_daily_sales(
-          ''55555555-5555-4555-8555-555555555555'', -1.00)).id') $$,
-  '22023', 'invalid_gross_amount', 'negative takings are rejected'
+$$ select pg_temp.as_user('11111111-1111-4111-8111-111111111111',
+'select (public.record_daily_sales(
+''55555555-5555-4555-8555-555555555555'', -1.00)).id') $$,
+'22023', 'invalid_gross_amount', 'negative takings are rejected'
 );
 
 select throws_ok(
-  $$ select pg_temp.as_user('11111111-1111-4111-8111-111111111111',
-       'select (public.record_daily_sales(
-          ''55555555-5555-4555-8555-555555555555'', null)).id') $$,
-  '22023', 'invalid_gross_amount',
-  'a missing figure is rejected rather than stored as null'
+$$ select pg_temp.as_user('11111111-1111-4111-8111-111111111111',
+'select (public.record_daily_sales(
+''55555555-5555-4555-8555-555555555555'', null)).id') $$,
+'22023', 'invalid_gross_amount',
+'a missing figure is rejected rather than stored as null'
 );
 
--- Sales that have not happened yet would sit in the quarterly total as revenue
--- nobody has taken.
+-- 🍏 FIX APPLIED HERE: Avoid internal quote interpolation by shifting string context safely.
 select throws_ok(
-  format(
-    $$ select pg_temp.as_user('11111111-1111-4111-8111-111111111111',
-         'select (public.record_daily_sales(
-            ''55555555-5555-4555-8555-555555555555'', 5000.00, %L)).id') $$,
-    private.manila_today() + 1),
-  '22023', 'invalid_sales_date', 'a day in the future cannot be recorded'
+$$ select pg_temp.as_user('11111111-1111-4111-8111-111111111111',
+'select (public.record_daily_sales(
+''55555555-5555-4555-8555-555555555555'', 5000.00, (private.manila_today() + 1))).id') $$,
+'22023', 'invalid_sales_date', 'a day in the future cannot be recorded'
 );
 
 -- The boundary itself is allowed: today is not the future.
 select is(
-  pg_temp.as_user('11111111-1111-4111-8111-111111111111',
-    format('select (public.record_daily_sales(
-       ''55555555-5555-4555-8555-555555555555'', 45000.00, %L)).sales_date::text',
-       private.manila_today())),
-  jsonb_build_array(
-    jsonb_build_object('sales_date', private.manila_today()::text)
-  ),
-  'naming today explicitly is accepted'
+pg_temp.as_user('11111111-1111-4111-8111-111111111111',
+format('select (public.record_daily_sales(
+''55555555-5555-4555-8555-555555555555'', 45000.00, %L)).sales_date::text',
+private.manila_today())),
+jsonb_build_array(
+jsonb_build_object('sales_date', private.manila_today()::text)
+),
+'naming today explicitly is accepted'
 );
 
 
--- ---------------------------------------------------------------------------
+------------------------------
 -- Removing a wrongly entered day
--- ---------------------------------------------------------------------------
+------------------------------
 -- A figure filed under the wrong date permanently inflates the quarterly gross
 -- behind a tax estimate. Editing it to zero would leave a row asserting the
 -- business opened that day and took nothing, which is a false record rather
 -- than a correction, so the row goes (DL-041).
 
 select throws_ok(
-  $$ select pg_temp.as_user('22222222-2222-4222-8222-222222222222',
-       'select (public.delete_daily_sales(
-          (select id from public.daily_sales
-            where business_id = ''55555555-5555-4555-8555-555555555555''
-              and gross_amount = 9800.00))).id') $$,
-  '42501',
-  'not_a_member',
-  'an outsider cannot delete another business''s day'
+$$ select pg_temp.as_user('22222222-2222-4222-8222-222222222222',
+'select (public.delete_daily_sales(
+(select id from public.daily_sales
+where business_id = ''55555555-5555-4555-8555-555555555555''
+and gross_amount = 9800.00))).id') $$,
+'42501',
+'not_a_member',
+'an outsider cannot delete another business''s day'
 );
 
 -- A row that does not exist and a row belonging to someone else answer
 -- identically, so an id cannot be confirmed by probing.
 select throws_ok(
-  $$ select pg_temp.as_user('11111111-1111-4111-8111-111111111111',
-       'select (public.delete_daily_sales(
-          ''99999999-9999-4999-8999-999999999999'')).id') $$,
-  '42501',
-  'not_a_member',
-  'deleting an id that does not exist reports the same error as one that is not yours'
+$$ select pg_temp.as_user('11111111-1111-4111-8111-111111111111',
+'select (public.delete_daily_sales(
+''99999999-9999-4999-8999-999999999999'')).id') $$,
+'42501',
+'not_a_member',
+'deleting an id that does not exist reports the same error as one that is not yours'
 );
 
 select is(
-  pg_temp.as_user('11111111-1111-4111-8111-111111111111',
-    'select (public.delete_daily_sales(
-       (select id from public.daily_sales
-         where business_id = ''55555555-5555-4555-8555-555555555555''
-           and gross_amount = 9800.00))).gross_amount::text'),
-  '[{"gross_amount": "9800.00"}]'::jsonb,
-  'an owner can remove a day they entered wrongly'
+pg_temp.as_user('11111111-1111-4111-8111-111111111111',
+'select (public.delete_daily_sales(
+(select id from public.daily_sales
+where business_id = ''55555555-5555-4555-8555-555555555555''
+and gross_amount = 9800.00))).gross_amount::text'),
+'[{"gross_amount": "9800.00"}]'::jsonb,
+'an owner can remove a day they entered wrongly'
 );
 
 select results_eq(
-  $$ select count(*)::int, sum(gross_amount) from public.daily_sales
-      where business_id = '55555555-5555-4555-8555-555555555555' $$,
-  $$ values (2, 45000.00::numeric) $$,
-  'the deleted day no longer counts towards the gross'
+$$ select count(*)::int, sum(gross_amount) from public.daily_sales
+where business_id = '55555555-5555-4555-8555-555555555555' $$,
+$$ values (2, 45000.00::numeric) $$,
+'the deleted day no longer counts towards the gross'
 );
 
 -- After the delete this audit row is the only remaining evidence of what the
 -- figure was, so it has to carry both the day and the amount.
 select results_eq(
-  $$ select metadata->>'sales_date', metadata->>'gross_amount'
-       from public.audit_events where action = 'daily_sales.deleted' $$,
-  $$ values ((select (private.manila_today() - 1)::text), '9800.00'::text) $$,
-  'a deletion records which day was removed and what it said'
+$$ select metadata->>'sales_date', metadata->>'gross_amount'
+from public.audit_events where action = 'daily_sales.deleted' $$,
+$$ values ((select (private.manila_today() - 1)::text), '9800.00'::text) $$,
+'a deletion records which day was removed and what it said'
 );
-
 
 select * from finish();
 
