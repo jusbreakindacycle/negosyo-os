@@ -786,3 +786,74 @@ Initial deadline output is a review/escalation prompt, not “approved.” A leg
 Tax outputs similarly require taxpayer-specific eligibility, registration facts, period completeness, and current primary-source rules. The product may estimate and warn. It must not elect, certify, assert final liability, file, sign, or pay.
 
 This decision narrows the v2 blueprint descriptions of the statutory clock and tax intersection without removing Permits or Taxes from the product.
+
+---
+
+## DL-053 — The database suites run in CI, and have been observed failing when tenant isolation breaks
+
+**Date:** 2026-08-04
+**Status:** Approved engineering result
+
+The database-verification portion of Phase gate B is complete. The gate as a whole is not; see the closing section.
+
+### What now runs
+
+`.github/workflows/ci.yml`, job `test-database`, on every push to `main` or `develop` and every pull request into them:
+
+| Item | Value |
+|---|---|
+| Environment | disposable Supabase local stack on a GitHub-hosted `ubuntu-latest` runner, destroyed with the runner |
+| Supabase CLI | 2.111.0, pinned rather than `latest` |
+| Credentials | none — no linked project, no service-role key, no secret read by any job |
+| Migrations | all seven applied from zero by `supabase db reset --local --no-seed`, in a step of its own |
+| Suites | `01_schema`, `02_rls_isolation`, `03_create_business_rpc`, `04_tracked_items`, `05_daily_sales` |
+| Expected count before execution | 239 — a static source estimate, reported for comparison and not evidence |
+| Observed count in CI | **239 assertions, 5 files, `Result: PASS`** |
+| Green run | `694c843` — https://github.com/jusbreakindacycle/negosyo-os/actions/runs/30829590044 |
+
+The job fails when the tests fail, when the harness reports failing assertions but exits zero, when no executed count can be parsed from the output, or when fewer suites run than the repository holds. The last two exist because a gate that quietly reports nothing is indistinguishable from a gate that passed.
+
+The CLI is pinned for the same reason: a verification gate whose toolchain moves without a commit is not repeatable.
+
+### The regression proof
+
+DL-026 established that a passing RLS test is evidence only once the negative case has been observed failing for the intended reason. That rule had never been applied to the CI job itself, and a green job is equally consistent with a suite whose assertions cannot fail.
+
+On a throwaway branch — `proof/rls-regression-20260803`, since deleted — a CI-only fixture replaced the `USING` clause of `daily_sales_select_member` with `true`, in the disposable database only, after `supabase db reset` and before the suites. No migration was edited: `20260802113000_create_daily_sales.sql` remained byte for byte what `main` holds. The policy kept its name, so the `policies_are()` shape assertion still passed. What turned the job red was behaviour, not a name.
+
+Five assertions were predicted to fail, recorded before the run. Exactly those five failed, and no others:
+
+| Suite | Assertion | have → want |
+|---|---|---|
+| 02 | a member reads audit history for exactly the businesses whose sales they can read … | `[1111…]` → `[1111…, 2222…]` |
+| 02 | the same holds for the second owner … | `[2222…]` → `[1111…, 2222…]` |
+| 02 | owner A sees only their own takings … | `4820.00, 7310.50` → `4820.00` |
+| 05 | an outsider sees none of another business's takings | `0.00, 9800.00, 45000.00` → `[]` |
+| 05 | the outsider cannot see that day … | `n = 1` → `n = 0` |
+
+Red runs: https://github.com/jusbreakindacycle/negosyo-os/actions/runs/30830423113 (counts: 02 failed 3/28, 05 failed 2/50) and https://github.com/jusbreakindacycle/negosyo-os/actions/runs/30831767471 (the same five, named, with diagnostics).
+
+The diagnostics are the substance. Each names a business id or a peso figure that became readable across a tenant boundary, so the assertions were reached and failed because the guard was gone — not because something errored earlier. The DL-043 audit-parity tripwire, written to fail "the day the two policies drift" and until now only ever passing trivially, is among the five. It has been seen doing its job.
+
+One incidental observation: the fixture sat under `supabase/tests/`, so the test runner also picked it up as a sixth file. It contributed no assertions and ran after all five suites, so it is not what broke them. A future fixture of this kind belongs outside the test directory.
+
+The branch was deleted once the evidence was recorded, and its commits are not ancestors of `main` or `develop`. Deleting a branch does not erase GitHub's record of the commits; the claim made here is only that the intentional regression never reached a product branch or the permanent migration history.
+
+### Three assertions were repaired before any of this counted
+
+Executing a suite is not the same as trusting it. Three assertions could not fail for the reason their descriptions gave:
+
+1. **`05`, the future-dated day.** The guard derived tomorrow from the session clock — `(now() + interval '1 day')::date` — which is the UTC date plus one. Between 16:00 and 23:59 UTC, midnight to 08:00 in Manila, that equals Manila's *today*, which `record_daily_sales()` accepts. The assertion would have gone red for eight hours of every day for a reason unrelated to the guard. Tomorrow now comes from `private.manila_today()`, evaluated as `postgres`, matching the pattern the rest of the file already used.
+
+2. **`04`, an outsider editing another business's item**, and **3. `05`, an outsider deleting another business's day.** Both resolved the target id *inside the outsider's own session*, where RLS hides the row. The subselect returned null, the RPC took its missing-row branch, and `not_a_member` was raised without the membership check ever being asked about a real record. Both passed while testing nothing — the same defect DL-026 found, in the slices added since.
+
+Each now resolves the id as `postgres` and passes it as a literal, with preconditions asserting that the row exists, belongs to the other business, and is invisible to the outsider; the absent-row and bad-argument cases are asserted separately, so "no such row", "real row, wrong tenant", and "bad argument" remain distinguishable. The repair was load-bearing: one of the five failures in the proof above lands on a precondition that did not exist before it.
+
+No policy, grant, function, or migration was weakened to make anything pass.
+
+### What this does not establish
+
+- **Phase gate B is not complete.** Its three application items — an authenticated business-creation cap, an OTP `type` allow-list before `verifyOtp`, and the build-time font download — were out of scope for this work and remain open.
+- **Nothing ran against the hosted Supabase project.** Every result above comes from a disposable local stack on a CI runner.
+- Docker is still absent from the founder's machine (DL-026), so the suites still cannot be executed locally. CI remains the only place they run.
+- A verified database is not a user-facing workflow. Milestone 2 remains a database foundation with no Stocks screens (DL-050).
