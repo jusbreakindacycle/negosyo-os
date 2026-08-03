@@ -118,6 +118,18 @@ values
    'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'shared', 'business.created',
    'business', '22222222-2222-4222-8222-222222222222');
 
+-- Every business seeded in this file needs a row here as well as an audit
+-- event. The read-parity assertion below compares the two tables business for
+-- business, so a business given one and not the other fails it for a reason
+-- that has nothing to do with the policies.
+insert into public.daily_sales
+  (business_id, sales_date, gross_amount, created_by)
+values
+  ('11111111-1111-4111-8111-111111111111', '2026-01-15', 4820.00,
+   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+  ('22222222-2222-4222-8222-222222222222', '2026-01-15', 7310.50,
+   'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+
 
 -- ---------------------------------------------------------------------------
 -- Reads: each owner sees their own business and nothing else
@@ -173,6 +185,51 @@ select is(
       where business_id = ''22222222-2222-4222-8222-222222222222'''),
   '[]'::jsonb,
   'owner A cannot read owner B''s audit events'
+);
+
+
+-- ---------------------------------------------------------------------------
+-- The audit trail must never be readable by a wider audience than the tables
+-- it records
+-- ---------------------------------------------------------------------------
+-- audit_events.metadata carries values that no longer exist anywhere else: the
+-- figure a correction replaced, and the figure a deleted day held. Those are
+-- deliberate -- DL-041 and DL-042 depend on them -- and they are safe only
+-- because audit_events_select_business_member and daily_sales_select_member
+-- currently admit exactly the same people. Both resolve through
+-- private.is_business_member(), which is blind to role.
+--
+-- That equality is an accident of the schema as it stands today, not a rule
+-- anything enforces. public.business_role is an enum of one value; the
+-- migration that created it names admin, staff, representative, and viewer as
+-- roles arriving later. The first of those to appear will almost certainly
+-- narrow who may read a business's takings, and narrowing daily_sales alone
+-- would leave the audit trail as a way around it -- carrying not just today's
+-- figures but every figure ever entered or removed.
+--
+-- These assertions are the tripwire for that day. They pass trivially now.
+
+select is(
+  pg_temp.query_as('authenticated', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    'select distinct business_id::text from public.audit_events order by 1'),
+  pg_temp.query_as('authenticated', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    'select distinct business_id::text from public.daily_sales order by 1'),
+  'a member reads audit history for exactly the businesses whose sales they can read -- if this fails because daily_sales gained a role predicate, audit_events_select_business_member must gain the matching one'
+);
+
+select is(
+  pg_temp.query_as('authenticated', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    'select distinct business_id::text from public.audit_events order by 1'),
+  pg_temp.query_as('authenticated', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    'select distinct business_id::text from public.daily_sales order by 1'),
+  'the same holds for the second owner, so an asymmetric policy cannot pass by testing only one side'
+);
+
+select is(
+  pg_temp.query_as('authenticated', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    'select gross_amount::text from public.daily_sales order by sales_date'),
+  '[{"gross_amount": "4820.00"}]'::jsonb,
+  'owner A sees only their own takings, which is what makes the comparison above meaningful'
 );
 
 
@@ -315,6 +372,10 @@ select throws_ok(
 select throws_ok(
   $$ select pg_temp.query_as('anon', null, 'select id from public.audit_events') $$,
   '42501', null, 'anon cannot read audit_events'
+);
+select throws_ok(
+  $$ select pg_temp.query_as('anon', null, 'select id from public.daily_sales') $$,
+  '42501', null, 'anon cannot read daily_sales'
 );
 
 

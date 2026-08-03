@@ -56,6 +56,7 @@ The priority-stock and buying loop, informed by DUO BREW in Mandaluyong City. Pr
 - [ ] Record bounded owner action and verified outcome.
 - [ ] Add deterministic calculation tests.
 - [ ] Add RLS and cross-business isolation tests for every new table.
+- [x] Hold the audit trail's read audience to the tables it records, by test (DL-043).
 
 **Exit condition:** The workflow connects count, delivery, daily sales, reorder recommendation, purchase, discrepancy, action, and verified outcome. Variance appears only once a baseline exists.
 

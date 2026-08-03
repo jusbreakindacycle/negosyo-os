@@ -599,3 +599,37 @@ A mistyped date silently replaces a legitimate day's takings. The lost figure fl
 This is **not** a database constraint, and must not become one. A rule forbidding an overwrite would break the correction path DL-041 requires. The RPC keeps upserting; the screen does the asking.
 
 Scope: a **UI requirement for the Milestone 2 Stocks screens**, recorded now and deliberately not implemented now. No daily-sales interface exists yet; `src/types/database.ts` is currently the only place in `src/` that mentions the table.
+
+---
+
+## DL-043 — Financial values stay in audit metadata, and the read audience is coupled by test
+
+**Date:** 2026-08-03
+**Status:** Approved founder decision
+
+A proposed patch would have stripped `gross_amount` from `daily_sales.deleted` and `previous_gross_amount` from `daily_sales.corrected`, on the reading that audit metadata was leaking financial data. That patch is rejected, and the premise behind it does not survive inspection.
+
+### There is no leak today
+
+`audit_events` grants `select` to `authenticated` under `audit_events_select_business_member`. `daily_sales` grants `select` to `authenticated` under `daily_sales_select_member`. Both resolve through `private.is_business_member()`. **The audience is identical.** Anyone who can read the audit metadata can already read `gross_amount` straight from the table.
+
+The only values the audit rows hold that are not otherwise readable are the figure a correction replaced and the figure a deleted day carried. Those are not an oversight; they are the entire reason the rows exist. `20260802113000_create_daily_sales.sql` says so where it defines the delete path: after the statement returns, the audit row is the only remaining evidence of the figure. Redacting it would have destroyed DL-041's recovery path and DL-042's, and closed no exposure in exchange.
+
+Nor do these values fall under the rule on `public.audit_events.metadata` — *never write a password, token, TIN, or other personal data.* A day's gross sales is business data every member of that business can already see.
+
+### There is a latent one
+
+The equality of audience is an accident of the schema as it stands, not an invariant anything enforces. `public.business_role` is an enum of exactly one value, and `20260731125356_create_businesses_and_memberships.sql` names admin, staff, representative, and viewer as roles arriving in the milestone that needs them. `private.is_business_member()` is blind to role by design.
+
+The first of those roles to land will very likely narrow who may read a business's takings — an owner will not want a counter person browsing every day's figures. Narrowing `daily_sales_select_member` alone would leave `audit_events` as a way around it, and a wider way than the table: not just current figures, but every figure ever entered, corrected, or removed, with who did it and when.
+
+### The decision
+
+1. **No redaction.** Both payloads stay as they are.
+2. **No migration, and no role predicate now.** A role model that does not exist yet cannot be guessed at; adding one would be the premature abstraction this project avoids.
+3. **The coupling becomes a tested invariant.** `supabase/tests/database/02_rls_isolation.test.sql` asserts that the businesses a member reads through `audit_events` are exactly those they read through `daily_sales`. It passes trivially today. It fails the day the two policies drift, and its assertion text names the remedy so the person who trips it does not need this entry to understand what to do.
+4. **Standing rule for `metadata`.** It carries identifiers and context. A value belongs there only where the value is not otherwise readable by that audience and the audit row is the last evidence of it — which is what makes the two daily-sales fields legitimate rather than exceptional. Every audited table added afterwards inherits both the rule and the parity assertion.
+
+Placing the assertion in `02_rls_isolation.test.sql` rather than the daily-sales file is deliberate. This is a platform rule about the audit trail that happens to be observable through `daily_sales` today; in the slice file, the author who adds the next audited table would never see it.
+
+**Pending verification.** Docker is still not installed, so the assertion has not run locally (DL-026). CI on the pull request is the first execution, and under DL-026 this is not evidence until that run is observed passing.
