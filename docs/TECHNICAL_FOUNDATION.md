@@ -36,10 +36,10 @@ As of the public repository review on 2026-08-03:
 | App scaffold, auth screens, business creation/switching | Implemented |
 | Membership-based tenancy foundation | Implemented; prior verification exists |
 | Application CI | Present |
-| Full database test execution in CI | Not established |
-| Business lifecycle fields | Migration exists |
-| Tracked items | Migration exists |
-| Daily sales | Migration and RPCs exist |
+| Full database test execution in CI | Established 2026-08-04: seven migrations from zero and 239 assertions across five suites on a disposable stack, pinned CLI, no hosted-project access. A deliberate tenant-isolation regression was observed turning the job red (DL-053) |
+| Business lifecycle fields | Migration exists; columns, enum, and default asserted in CI |
+| Tracked items | Migration exists; schema, isolation, and RPC behaviour asserted in CI |
+| Daily sales | Migration and RPCs exist; positive and negative paths asserted in CI |
 | Stocks user interface | Not implemented |
 | Reorder calculation | Not implemented |
 | Action dashboard | Not implemented |

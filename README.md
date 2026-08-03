@@ -63,10 +63,10 @@ Public `main` was reviewed on **2026-08-03**. The latest listed milestone commit
 | Area | Current evidence status |
 | --- | --- |
 | Next.js application scaffold | `VERIFIED` by prior audit checks |
-| Authentication and business tenancy foundation | `VERIFIED` for the previously exercised M1 paths; database CI coverage still needs improvement |
-| Business lifecycle fields | `IMPLEMENTED_UNVERIFIED` in current migrations |
-| Tracked priority items database | `IMPLEMENTED_UNVERIFIED` |
-| Daily-sales database and RPCs | `IMPLEMENTED_UNVERIFIED` for positive behavioural paths |
+| Authentication and business tenancy foundation | `VERIFIED`; the isolation suites now run in CI on every push and pull request (DL-053) |
+| Business lifecycle fields | `VERIFIED` at the database level — columns, enum, and default are asserted in CI; no lifecycle workflow exists in the interface |
+| Tracked priority items database | `VERIFIED` at the database level — schema, isolation, and RPC behaviour assert in CI |
+| Daily-sales database and RPCs | `VERIFIED` at the database level, positive and negative paths included |
 | Stocks screens | `DOCUMENTED_ONLY` |
 | Buying/reorder assistant | `DOCUMENTED_ONLY` |
 | AI-assisted action dashboard | `DOCUMENTED_ONLY` |
@@ -79,7 +79,7 @@ Public `main` was reviewed on **2026-08-03**. The latest listed milestone commit
 
 ## Immediate build priority
 
-1. Make the database test suites run in CI and prove they fail when isolation is deliberately broken.
+1. ~~Make the database test suites run in CI and prove they fail when isolation is deliberately broken.~~ Done on 2026-08-04: 239 assertions across five suites, seven migrations applied from zero, and a deliberate tenant-isolation regression observed turning CI red on exactly the predicted assertions (DL-053).
 2. Correct UI and documentation claims that imply features already exist.
 3. Build one end-to-end Stocks action slice on a real 360px Android viewport:
    - configure a small priority-item list;
@@ -126,6 +126,8 @@ npm run build
 ```
 
 Database changes are not complete until migrations and pgTAP suites run in a repeatable environment, preferably CI. A linked development project may support investigation, but it is not a substitute for an automated regression gate.
+
+That gate now exists. Every push to `main` or `develop`, and every pull request into them, applies all migrations from zero to a disposable Supabase stack and runs the pgTAP suites, reporting the exact executed assertion count. It needs no hosted-project credentials. Running the suites locally still requires Docker, which is not installed on the founder's machine (DL-026), so CI remains the only place they execute.
 
 ## Controlling files
 

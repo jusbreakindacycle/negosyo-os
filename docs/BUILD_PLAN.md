@@ -41,20 +41,27 @@
 
 ## Phase gate B — Database verification before more feature SQL
 
-**Status: next engineering priority.**
+**Status: database-verification portion `VERIFIED`; three application items still open, so the gate as a whole is not complete.**
 
-- [ ] Run all existing pgTAP suites in CI.
-- [ ] Ensure the job uses a repeatable disposable database environment.
-- [ ] Execute positive and negative cases for `tracked_items` and `daily_sales`.
-- [ ] Prove that a deliberately broken RLS policy makes CI fail.
-- [ ] Verify audit-event audience parity and metadata behaviour.
-- [ ] Resolve any false-positive or unreachable security assertions.
-- [ ] Record the exact assertion count and environment in the decision log.
+Database verification (complete — see DL-053):
+
+- [x] Run all existing pgTAP suites in CI.
+- [x] Ensure the job uses a repeatable disposable database environment.
+- [x] Execute positive and negative cases for `tracked_items` and `daily_sales`.
+- [x] Prove that a deliberately broken RLS policy makes CI fail.
+- [x] Verify audit-event audience parity and metadata behaviour.
+- [x] Resolve any false-positive or unreachable security assertions.
+- [x] Record the exact assertion count and environment in the decision log.
+
+Application items (still open — none of these was in scope for the database work):
+
 - [ ] Add an authenticated business-creation cap or another documented abuse ceiling before public testing.
 - [ ] Validate OTP `type` through an allow-list before calling `verifyOtp`.
 - [ ] Remove build-time dependence on externally downloaded fonts or explicitly accept and test that dependency.
 
 **Exit condition:** Every current migration is reproducible from zero and the full database test suite passes in CI. One intentional security regression has been shown to turn CI red.
+
+**Database exit condition met on 2026-08-04.** Seven migrations applied from zero and 239 assertions across five suites passing on a disposable local stack, Supabase CLI 2.111.0, no hosted-project access ([run 30829590044](https://github.com/jusbreakindacycle/negosyo-os/actions/runs/30829590044)). A deliberate `daily_sales_select_member` regression, applied to the CI database only on a since-deleted branch, turned the job red on exactly the five predicted assertions ([run 30831767471](https://github.com/jusbreakindacycle/negosyo-os/actions/runs/30831767471)). The gate stays open until the three application items above are done.
 
 ---
 
