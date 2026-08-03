@@ -11,20 +11,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Job 1: Your original Frontend, Lint, and Unit Checks
   verify:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        # Currently supported Node.js LTS lines. Node 20 is end-of-life and is
-        # not testable here: Vitest's Rolldown dependency imports `styleText`
-        # from `node:util`, which Node 20.9 does not provide.
         node-version: ["22", "24"]
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -42,3 +40,27 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+  # Job 2: Our new Supabase & pgTAP Security Tester
+  test-database:
+    name: Run pgTAP Security Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase Local Stack
+        run: supabase start
+
+      - name: Run pgTAP Tests
+        run: supabase test db
+
+      - name: Stop Supabase Stack
+        if: always()
+        run: supabase stop
