@@ -277,12 +277,6 @@ begin
   values (
     v_business_id, v_user_id, 'operate_decide', 'daily_sales.deleted',
     'daily_sales', v_row.id,
-    -- 🍏 SANITIZED VERSION
-    jsonb_build_object(
-      'sales_date', v_sales_date,
-      'was_corrected', true
-    )
-
     jsonb_build_object(
       'sales_date', v_row.sales_date::text,
       'gross_amount', v_row.gross_amount::text
