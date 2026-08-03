@@ -121,6 +121,38 @@ jobs:
               ;;
           esac
 
+      - name: INTENTIONAL TENANT-ISOLATION REGRESSION (proof branch only)
+        shell: bash
+        run: |
+          set -o pipefail
+
+          echo "::warning::Applying an intentional RLS regression to the disposable CI database. This branch exists to prove the gate fails, and must never be merged."
+
+          # The container, not a connection string: a URL carrying
+          # postgres:postgres would be a credential-bearing string in the log,
+          # which this workflow's start step goes to some trouble to avoid.
+          container=$(docker ps --filter "name=supabase_db" --format '{{.Names}}' | head -n1)
+          if [ -z "$container" ]; then
+            echo "::error::no supabase_db container found"
+            exit 1
+          fi
+          echo "applying fixture to $container"
+
+          docker exec -i "$container" psql -U postgres -d postgres \
+            -v ON_ERROR_STOP=1 -f - \
+            < supabase/tests/proof/intentional_daily_sales_rls_regression.sql
+
+          # Confirm the fixture took effect. A no-op fixture would produce a
+          # green run that looks like proof of a working guard, which is the
+          # opposite of what this branch is for.
+          predicate=$(docker exec -i "$container" psql -U postgres -d postgres -Atc \
+            "select pg_get_expr(polqual, polrelid) from pg_policy where polname = 'daily_sales_select_member'")
+          echo "daily_sales_select_member USING predicate is now: $predicate"
+          if [ "$predicate" != "true" ]; then
+            echo "::error::fixture did not take effect; the red run below would not prove anything"
+            exit 1
+          fi
+
       - name: Run database test suites
         shell: bash
         run: |
