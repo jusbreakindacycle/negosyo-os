@@ -6,7 +6,7 @@ Append only. Do not rewrite historical entries to make later decisions appear in
 
 ## DL-001 — One unified product and repository
 
-**Date:** 2026-07-31  
+**Date:** 2026-07-31
 **Status:** Approved founder decision
 
 NegosyoOS PH proceeds as one application, one owner account, and one active repository.
@@ -19,7 +19,7 @@ This does not approve final branding or production architecture.
 
 ## DL-002 — Two bounded domains
 
-**Date:** 2026-07-31  
+**Date:** 2026-07-31
 **Status:** Approved founder decision
 
 The unified product contains:
@@ -33,7 +33,7 @@ Both belong to the same application. Their rules, decisions, and professional bo
 
 ## DL-003 — Phase 1A foundation-prototype coding
 
-**Date:** 2026-07-31  
+**Date:** 2026-07-31
 **Status:** Approved founder decision
 
 Coding may begin for a narrow foundation prototype.
@@ -46,7 +46,7 @@ This does not establish market validation, a production launch, or the final rel
 
 ## DL-004 — Prototype technical stack
 
-**Date:** 2026-07-31  
+**Date:** 2026-07-31
 **Status:** Selected for prototype implementation
 
 Use:
@@ -66,7 +66,7 @@ The stack may be revisited after prototype and field evidence.
 
 ## DL-005 — Self-service-first service model
 
-**Date:** 2026-07-31  
+**Date:** 2026-07-31
 **Status:** Approved founder direction
 
 The default service is owner self-service with software and AI assistance.
@@ -81,7 +81,7 @@ A mandatory case manager is not part of normal use.
 
 ## DL-006 — First operational vertical remains unselected
 
-**Date:** 2026-07-31  
+**Date:** 2026-07-31
 **Status:** Approved project constraint
 
 The twelve carried-forward operational candidates remain hypotheses.
@@ -94,7 +94,7 @@ Vertical selection requires comparative evidence.
 
 ## DL-007 — Inventory versus jobs and orders remains unresolved
 
-**Date:** 2026-07-31  
+**Date:** 2026-07-31
 **Status:** Open product and architecture question
 
 The operations domain should eventually accommodate physical items, customer work, or both.
@@ -107,7 +107,7 @@ A concrete inventory-centred flow will be built first, followed later by a struc
 
 ## DL-008 — Minimal documentation rule
 
-**Date:** 2026-07-31  
+**Date:** 2026-07-31
 **Status:** Approved repository-governance decision
 
 The repository uses a small set of controlling documents.
@@ -120,7 +120,7 @@ Update the controlling files when a durable decision changes.
 
 ## DL-009 — Working names only
 
-**Date:** 2026-07-31  
+**Date:** 2026-07-31
 **Status:** Working names
 
 The following are temporary:
@@ -137,7 +137,7 @@ Final naming requires separate research and approval.
 
 ## DL-010 — BMBE model added to Start & Comply
 
-**Date:** 2026-07-31  
+**Date:** 2026-07-31
 **Status:** Approved product constraint
 
 BMBE is modelled as a time-bound business certification and possible incentive status within Start & Comply.
@@ -153,7 +153,7 @@ BMBE certificate status and each claimed legal, tax, labour, financing, training
 
 ## DL-011 — Enterprise classification and reference cases corrected
 
-**Date:** 2026-07-31  
+**Date:** 2026-07-31
 **Status:** Approved founder clarification
 
 MSME is the broad enterprise-size classification covering micro, small, and medium enterprises.
@@ -633,3 +633,156 @@ The first of those roles to land will very likely narrow who may read a business
 Placing the assertion in `02_rls_isolation.test.sql` rather than the daily-sales file is deliberate. This is a platform rule about the audit trail that happens to be observable through `daily_sales` today; in the slice file, the author who adds the next audited table would never see it.
 
 **Pending verification.** Docker is still not installed, so the assertion has not run locally (DL-026). CI on the pull request is the first execution, and under DL-026 this is not evidence until that run is observed passing.
+---
+
+## DL-044 — Product positioning covers establishment, compliance, operations, and decisions
+
+**Date:** 2026-08-03
+**Status:** Approved founder decision
+
+The public-facing positioning is:
+
+> NegosyoOS PH helps Philippine MSME owners establish and maintain their businesses, meet compliance obligations, control daily operations, and make better decisions through affordable AI-assisted self-service, with human support available when needed.
+
+The fuller internal positioning additionally names qualified BMBEs, owner-operated establishments, service contractors, growing B2B businesses, authorised representatives, and qualified professionals.
+
+This supersedes any wording that narrows the product only to owners without a POS or bookkeeper, or only to discovering whether they are losing money. Those remain possible user conditions, not the product definition.
+
+---
+
+## DL-045 — One shared action model drives the dashboard
+
+**Date:** 2026-08-03
+**Status:** Approved founder decision
+
+Stocks, Permits, and Taxes remain the three user-facing product areas. Their common pattern is:
+
+> What needs attention → why it matters → what information is missing → what to do next → owner decision → outcome.
+
+The authenticated dashboard is the owner’s action centre. It may show Today, Upcoming, Waiting, Needs review, and recently completed items.
+
+The dashboard aggregates domain-produced actions. It does not erase domain boundaries or become a universal write engine. Stocks, Permits, and Taxes retain their own authoritative records, calculations, rules, and commands.
+
+---
+
+## DL-046 — Exact peso loss is not required to validate operational pain
+
+**Date:** 2026-08-03
+**Status:** Approved founder decision; supersedes the first kill criterion in Project Blueprint v2.0
+
+An owner’s inability to calculate an exact peso loss does not invalidate a recurring operational problem.
+
+Valid evidence may be a concrete recent incident involving stockout, overbuying, spoilage, forgotten purchasing, customer embarrassment, supplier uncertainty, missing job materials, unbilled work, or another observable operational consequence.
+
+Peso impact remains useful when available. It is not a prerequisite for discovery or for building the smallest test.
+
+The revised kill condition is behavioural: stop or redesign when accessible target operators cannot describe recurring incidents, will not maintain the minimum data habit, or find realistic action recommendations useless.
+
+The two previously recorded null peso answers remain historical evidence and must not be deleted. Their interpretation changes: they show that loss is unmeasured, not that the pain is absent.
+
+---
+
+## DL-047 — Daily gross sales is a conditional input, not the universal data spine
+
+**Date:** 2026-08-03
+**Status:** Approved founder decision; supersedes contrary blueprint and README statements
+
+The universal product spine is evidence-labelled business facts, not one daily gross-sales value.
+
+Daily gross sales is required for sales-based tax estimates and may support some demand models. It is not required for all Stocks actions. The product can help with low stock, purchase lists, supplier timing, waste, forgotten purchases, and job-material readiness using other relevant inputs.
+
+Taxes may consume shared financial records through explicit interfaces, but must not depend on the Stocks UI or treat operational records as complete tax records.
+
+Any calculation using daily sales must show period coverage, missing days, corrections, rule version, and assumptions.
+
+---
+
+## DL-048 — AI may be visible in the dashboard, but it does not become authority
+
+**Date:** 2026-08-03
+**Status:** Approved founder decision; partially supersedes DL-036
+
+The rule “AI explains; AI does not decide” remains approved.
+
+The sentence in DL-036 limiting AI to invisible plumbing is superseded. AI may be visible through dashboard summaries, guided explanations, missing-information questions, and drafting assistance.
+
+AI is not required to be a mascot, unrestricted chatbot, or separate tab. A conversational surface is optional and not approved merely by this decision.
+
+Deterministic rules and recorded evidence create obligations, calculations, priorities with legal deadlines, and authorised commands. AI may organise and explain those outputs. The owner or authorised human confirms high-impact actions.
+
+The product must remain usable without AI.
+
+---
+
+## DL-049 — Evidence-status labels and anti-hallucination protocol are mandatory
+
+**Date:** 2026-08-03
+**Status:** Approved founder decision
+
+The controlling labels are:
+
+- `VERIFIED`
+- `IMPLEMENTED_UNVERIFIED`
+- `DOCUMENTED_ONLY`
+- `PLANNED`
+- `RESEARCH_REQUIRED`
+- `OUT_OF_SCOPE`
+- `SUPERSEDED`
+
+A decision is not an implementation. A migration is not a user workflow. A written test is not verified until it executes the intended path. A working workflow is not commercial validation. AI-generated prose is not evidence.
+
+Legal, regulatory, tax, fee, deadline, eligibility, and market claims require a source appropriate to the claim. Current rules require an effective date and last-reviewed date. Missing evidence remains visible as unknown or research required.
+
+Coding agents must report tests actually run separately from tests not run. They must not upgrade an evidence label silently.
+
+---
+
+## DL-050 — Milestone 2 is a partial database foundation, not a shipped buying assistant
+
+**Date:** 2026-08-03
+**Status:** Approved corrective decision
+
+The commit title “Milestone 2 — Stocks: tracked items, daily sales, and the buying assistant” overstates the user capability at commit `6321534`.
+
+At the reviewed state, the repository contains lifecycle, tracked-item, and daily-sales database work but no user-facing Stocks route, end-to-end purchase workflow, reorder calculation, or buying-assistant logic.
+
+Milestone 2 remains in progress. Completion requires an end-to-end operator workflow and executed verification, not only migrations, generated types, documentation, or written tests.
+
+Future commit and milestone descriptions should name either the user capability delivered or the exact implementation layer, never a planned feature that remains absent.
+
+---
+
+## DL-051 — Phase 1A has explicit red-team and out-of-scope gates
+
+**Date:** 2026-08-03
+**Status:** Approved founder decision
+
+Every feature proposal must answer:
+
+1. What real incident does this address?
+2. What minimum data and habit does it require?
+3. What happens when the data is missing, stale, wrong, or contradictory?
+4. What high-impact error can one typo cause?
+5. Is the product generalising from one operator, one franchise, or one LGU?
+6. Is AI adding comprehension or manufacturing authority?
+7. Can permissions or paid boundaries be bypassed through the API?
+8. Is the feature useful without AI?
+9. What evidence would stop the work?
+10. Does this belong in the current narrow release?
+
+Phase 1A explicitly excludes full POS, ERP, accounting, payroll, HR, banking, lending, insurance, professional marketplace, nationwide authoritative rules, direct government filing or payment, autonomous agents, all vertical packs, a full B2B jobs engine before discovery, complex offline writes, final native packaging, subscription billing, and production launch.
+
+---
+
+## DL-052 — Permit and tax outputs require applicability conditions, not headline rules
+
+**Date:** 2026-08-03
+**Status:** Approved corrective decision
+
+The product must not treat RA 11032 as a universal countdown that automatically produces approval or a demand letter. Completeness, required fees, official transaction classification, the applicable Citizen’s Charter, and other statutory or sector-specific conditions must be recorded or remain unknown.
+
+Initial deadline output is a review/escalation prompt, not “approved.” A legal demand template is deferred until its trigger and wording receive qualified review.
+
+Tax outputs similarly require taxpayer-specific eligibility, registration facts, period completeness, and current primary-source rules. The product may estimate and warn. It must not elect, certify, assert final liability, file, sign, or pay.
+
+This decision narrows the v2 blueprint descriptions of the statutory clock and tax intersection without removing Permits or Taxes from the product.

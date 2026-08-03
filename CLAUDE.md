@@ -2,7 +2,7 @@
 
 ## Read first
 
-Before planning or editing, read in this order:
+Before planning, editing, or generating migrations, read in this order:
 
 1. `README.md`
 2. `docs/PROJECT_BLUEPRINT.md`
@@ -10,262 +10,275 @@ Before planning or editing, read in this order:
 4. `docs/BUILD_PLAN.md`
 5. `docs/DECISION_LOG.md`
 
+Then inspect the current repository tree, routes, migrations, tests, and Git status. Do not infer implementation from milestone names or documentation.
+
 ## Repository authority
 
-This repository is the single active repository for the unified NegosyoOS PH product.
+This repository is the single active repository for NegosyoOS PH.
 
-The old standalone BusinessOS repository is legacy material and must not be treated as an active dependency or source of authority unless the founder explicitly provides a file for migration review.
+Legacy repositories, old chat context, branches not present locally, and remembered requirements are not authoritative unless the founder explicitly provides them for migration review.
 
-## Product rule
+Where documents conflict:
 
-This is one application with two bounded domains:
+1. the latest approved entry in `DECISION_LOG.md` governs the decision;
+2. `PROJECT_BLUEPRINT.md` governs current product direction;
+3. `TECHNICAL_FOUNDATION.md` governs implementation boundaries;
+4. `BUILD_PLAN.md` governs authorised sequence;
+5. the current code and executed tests govern what is actually implemented and verified.
 
-- `start-comply`
-- `operate-decide`
+Do not rewrite decision history. Append a new decision when direction changes.
 
-Keep shared platform services separate from domain-specific rules.
+## Product statement
 
-Do not collapse the application into one generic ERP, POS, accounting, tax, legal, and permit module.
+NegosyoOS PH helps Philippine MSME owners establish and maintain their businesses, meet compliance obligations, control daily operations, and make better decisions through affordable AI-assisted self-service, with human support available when needed.
 
-### Naming
+The three user-facing product areas are:
 
-`Start & Comply` and `Operate & Decide` are internal codenames. **They must never appear in the interface.** The three features the owner sees are:
+- **Stocks & Operations**
+- **Permits & Compliance**
+- **Taxes & Records**
 
-| Internal name | User-facing name | The owner's question |
-| --- | --- | --- |
-| Operate & Decide | **Stocks** | *Ano bibilhin ko, magkano, kailan?* |
-| Start & Comply | **Permits** | *Ano kailangan kong ayusin, kailan ang deadline?* |
-| Tax readiness | **Taxes** | *Magkano kaya babayaran ko?* |
+Internal codenames must not appear in public-facing UI.
 
-Taxes is not a third engine. It is the intersection of the other two: operations captures the money data, compliance knows the deadlines, tax is what falls out. That intersection is the reason both domains live in one application.
+## Shared action model
 
-### The data spine
+All product areas follow:
 
-The owner enters data once — daily gross sales as a single number, purchases and expenses with receipt, and weekly counts of priority items only. Stocks, Permits, and Taxes are all outputs of that one spine.
+> What needs attention → why it matters → missing information → bounded next action → owner decision → outcome.
 
-The single daily gross-sales figure is load-bearing. It is not a POS. Without it the product cannot compute anything tax-related.
+The dashboard aggregates domain-produced action items. It does not bypass domain rules or become a universal write engine.
 
-## Current implementation authority
+## AI boundary
 
-Phase 1A foundation-prototype coding is authorised.
+Standing rule:
 
-Milestones **M0** (scaffold) and **M1** (authentication, tenancy, RLS, audit spine) are complete. **M2 (Stocks)** is the current milestone. The order was corrected against the real repository on 2026-08-02; see DL-025 and `docs/BUILD_PLAN.md`.
+> Deterministic rules and recorded evidence determine. AI explains, organises, and assists. The owner or authorised human decides.
 
-The prototype stack in `docs/TECHNICAL_FOUNDATION.md` is selected for implementation unless the founder explicitly changes it. Where that document and `docs/PROJECT_BLUEPRINT.md` v2.0 disagree, **the blueprint is authoritative** and the technical foundation is the document to correct.
+AI may:
 
-This does not approve:
+- summarise authorised action items;
+- explain in plain English or Taglish;
+- ask for missing information;
+- draft checklists, purchase lists, reminders, follow-up messages, or questions;
+- surface contradictions or unusual records;
+- recommend professional review.
 
-- final branding;
-- final commercial architecture;
-- direct government filing;
-- automatic tax conclusions;
-- legal or CPA representation;
-- a nationwide rules database;
-- subscription billing.
+AI must not:
 
-### Resolved: the first reference case
+- invent requirements, fees, deadlines, tax rates, stock facts, or permissions;
+- fill missing evidence from general knowledge;
+- choose a tax option;
+- declare compliance, approval, eligibility, deductibility, exemption, or final liability;
+- directly perform high-impact writes without explicit confirmation and server-side authorisation;
+- file, sign, pay, submit, or become an authorised representative;
+- become a required dependency for a core workflow.
 
-The coffee shop is the selected first reference case (DL-027, superseding only the "vertical unselected" clause of DL-006).
+When evidence is missing, return `unknown` and identify the missing fact.
 
-DL-006's second clause remains binding: **the DUO BREW workflow does not select CaféOS.** Selecting a reference case is choosing what to build against, not narrowing the product to cafés. Permits stays horizontal and applies to every business type without exception (DL-032). No café-specific vocabulary, column, or hard-coded item enters the shared spine; coffee-shop specifics live in seed data and per-business configuration.
+## Evidence-status protocol
+
+Use only:
+
+- `VERIFIED`
+- `IMPLEMENTED_UNVERIFIED`
+- `DOCUMENTED_ONLY`
+- `PLANNED`
+- `RESEARCH_REQUIRED`
+- `OUT_OF_SCOPE`
+- `SUPERSEDED`
+
+Rules:
+
+- A decision is not implementation.
+- A migration is not a shipped workflow.
+- Generated types are not runtime proof.
+- A written test is not verified until it runs and reaches the intended path.
+- A passing security test is not evidence until a negative case fails for the intended reason.
+- A working workflow is not commercial validation.
+- AI-generated text is not evidence.
+- Never upgrade a label silently.
+
+Legal, regulatory, tax, fee, deadline, eligibility, and market claims require sources appropriate to the exact claim. Current rules require an effective date and last-reviewed date.
+
+## Current repository truth
+
+At the documentation review dated 2026-08-03:
+
+- M0 scaffold exists.
+- M1 authentication and tenancy foundation exists.
+- Business lifecycle, tracked-item, and daily-sales migrations exist.
+- The positive behavioural database tests for the newest slices were not established as running in CI.
+- No user-facing Stocks workflow, reorder calculation, or buying assistant exists.
+- Permits, document vault, Taxes, and AI dashboard are not implemented.
+
+Milestone 2 is a partial database foundation and remains in progress.
+
+Do not claim otherwise unless the current tree and executed checks prove a later state.
+
+## Current authorised work
+
+Follow `docs/BUILD_PLAN.md`.
+
+The next engineering gate is database verification in CI. Do not add more feature SQL until the existing migrations and pgTAP suites run repeatably, except work strictly necessary to establish that test environment.
+
+After that, build only the smallest end-to-end Stocks action slice.
+
+## Stocks & Operations guardrails
+
+The first slice addresses recurring operational incidents such as:
+
+- stockout;
+- overbuying;
+- waste or spoilage;
+- forgotten purchasing;
+- unavailable items;
+- uncertainty before supplier ordering;
+- missing job materials in a later validated job-centred workflow.
+
+An exact peso loss is useful but not required to validate the problem.
+
+Do not require full inventory onboarding. Begin with 8–12 priority items.
+
+Daily gross sales:
+
+- may support sales-based tax estimates and some demand analysis;
+- is not the universal product spine;
+- is not required for every low-stock or purchase action;
+- is not proof of tax completeness.
+
+Do not produce a confident reorder quantity unless units, current quantity, usage or minimum level, timing, lead time, and pack/MOQ constraints are sufficient. Otherwise show a bounded qualitative action and the missing fields.
+
+## Permits & Compliance guardrails
+
+May organise:
+
+- cases, tasks, dependencies, blockers;
+- documents, assessments, receipts, dates;
+- source, jurisdiction, effective date, and evidence status;
+- owner and representative handoff;
+- renewal and review reminders.
+
+Must not:
+
+- invent a requirement or fee;
+- encode one LGU process as nationwide;
+- guarantee approval;
+- automatically declare compliance;
+- present AI as a lawyer or government officer;
+- directly file or pay in Phase 1A.
+
+RA 11032 must not be reduced to a universal countdown. Completeness, payment, official classification, the applicable Citizen’s Charter, and other conditions must be represented or remain unknown. Initial output is review/escalation guidance, not automatic approval. A legal demand letter requires qualified review before release.
+
+## Taxes & Records guardrails
+
+May:
+
+- show record completeness;
+- total owner-confirmed figures;
+- provide bounded estimates;
+- monitor thresholds as warnings;
+- explain which facts are missing;
+- prepare questions for an accountant or official channel.
+
+Must not:
+
+- state an estimated amount as final liability;
+- select or activate a tax option;
+- treat Stocks records as complete tax records;
+- certify BMBE treatment;
+- present BMBE income-tax exemption and the 8% option as simultaneously available;
+- prepare, sign, submit, or pay a return in Phase 1A.
+
+All calculations are deterministic, versioned, tested, and linked to current primary sources.
+
+## BMBE model
+
+Keep separate:
+
+- enterprise size;
+- non-binding eligibility assessment;
+- application;
+- Certificate of Authority;
+- validity period;
+- claimed BIR treatment;
+- each tax, labour, financing, training, or LGU effect;
+- official or professional confirmation.
+
+Never use one `is_bmbe` boolean as the entire model.
+
+## Tenancy and authorisation
+
+A person reaches a business through `business_memberships` and no other route.
+
+- No client-supplied user ID confers identity.
+- No service-role key enters the browser.
+- Every exposed table has RLS.
+- Important writes use authorised server paths or controlled RPCs.
+- `SECURITY DEFINER` functions use an empty `search_path`.
+- Paid, lifecycle, or role restrictions that matter are enforced server-side, not only by hidden components.
+- Representative authority is task-scoped and time-bounded when implemented.
+- Audit history must not expose a wider audience than the underlying records without an explicit decision.
 
 ## Coding discipline
 
 - Work in small vertical slices.
-- Complete one task from `docs/BUILD_PLAN.md` at a time.
-- Show the exact plan before broad changes.
-- Prefer plain, maintainable code over clever abstractions.
-- Avoid premature generic engines.
-- Avoid unnecessary packages.
-- Avoid unnecessary Markdown files.
-- Do not create one task file per feature.
+- Change only files required for the current task.
+- Prefer plain code over abstractions.
+- Do not build a universal engine before at least two concrete workflows prove shared behaviour.
+- Do not create tables because they appear in future documentation.
 - Do not redesign unrelated areas.
+- Do not add packages without a concrete need.
+- Use migrations for schema changes.
+- Preserve correction and audit semantics.
+- Keep ordinary-owner language in the UI.
 - Do not commit or push automatically.
-- Never expose secrets or service-role keys to the browser.
-- Use database migrations for schema changes.
-- Enable and test Row Level Security for every exposed table.
-- Verify RLS against a real database. A passing test is only evidence if the negative case has been observed to fail for the intended reason (DL-026).
-- Treat document access as sensitive by default.
-- Keep domain language understandable to ordinary business owners.
+- Do not include secrets, local settings, `.env.local`, or Supabase temp files in shared archives.
 
-### Tool output
+## Phase 1A exclusions
 
-Filter tool output at the source. Do not dump whole payloads into context —
-grep, head, or parse down to the lines that matter. Parse TAP output to
-failures only. Never cat a generated types file, an extension list, or a
-full lockfile.
+Do not implement unless a new approved decision explicitly changes scope:
 
-Reason: two responses stalled mid-stream this session, both immediately
-after very large tool results. Smaller payloads reduce the exposure.
+- full POS, ERP, accounting, payroll, or HR;
+- banking, lending, insurance, or investment products;
+- nationwide authoritative government-rule database;
+- direct filing, signing, payment, or portal automation;
+- automatic certification or exemption activation;
+- professional marketplace;
+- all vertical packs;
+- full B2B jobs engine before discovery;
+- autonomous AI agents;
+- unrestricted general chatbot;
+- complex offline writes;
+- final native application;
+- subscription billing;
+- production launch.
 
-## Domain boundaries
+## Required plan before editing
 
-### Start & Comply may
+State:
 
-- organise requirements, tasks, documents, fees, dates, statuses, and evidence;
-- guide owner or representative handoffs;
-- explain confirmed documents and official sources;
-- prepare self-service checklists;
-- escalate high-risk questions.
+1. repository state observed;
+2. current evidence status;
+3. exact user capability targeted;
+4. files expected to change;
+5. explicit exclusions;
+6. tests that must run;
+7. expected evidence status after completion.
 
-It must not:
+Do not ask for information already present in the controlling documents or current repository.
 
-- guarantee approval;
-- invent fees or requirements;
-- automatically declare full compliance;
-- impersonate government;
-- present AI as a lawyer or CPA;
-- perform direct filing unless later researched and approved;
-- automatically declare BMBE eligibility, certificate validity, or income-tax exemption;
-- treat a self-reported asset amount as an official eligibility determination.
+## Completion report
 
-### Operate & Decide may
-
-- record operational movements;
-- compare expected and actual;
-- expose shortages or discrepancies;
-- recommend bounded owner actions;
-- record decisions and outcomes;
-- export owner-confirmed records.
-
-It must not:
-
-- call operational records registered accounting books;
-- automatically decide tax deductibility;
-- accuse a person of theft or fraud from an anomaly;
-- force businesses to replace an existing POS.
-
-Stocks leads with the **buying decision**, not the variance report. The primary output is *"Beans: about 3 days left. Order 8 kg — that's your usual week."* Variance is secondary and appears only once a baseline exists. An owner who has never measured a loss will not believe a loss report, but will believe a stockout prediction, because they can check it on Thursday.
-
-Onboarding must never require entering a full inventory: 8–12 priority items only. If first-run setup exceeds 20 minutes, the notebook wins.
-
-### Taxes may
-
-- total gross sales and show the position against the ₱3,000,000 VAT threshold;
-- estimate percentage tax and show which BIR form it relates to;
-- compare the 8% option against graduated rates as an estimate for discussion.
-
-It must not:
-
-- state an amount owed as fact;
-- elect a tax option on the owner's behalf;
-- prepare or submit a filing;
-- present an estimate without its confirm-with-your-accountant boundary.
-
-The boundary is organise and estimate, never assert and file:
-
-- correct: *"Gross sales this quarter: ₱612,400. At 3%, percentage tax would be about ₱18,372. Confirm with your accountant before filing."*
-- wrong: *"You owe ₱18,372. File 2551Q now."*
-
-### RA 11032 statutory clock
-
-The defensible part of Permits is not a checklist; it is RA 11032 enforcement. The application may record the date of complete submission with its receipt, classify a transaction into the 3 / 7 / 20 working-day buckets under §5, count working days, alert when the statutory deadline passes, and generate the §9 written demand for the deemed-approved document.
-
-It must not present the deemed-approved remedy as automatic, guarantee that a demand will succeed, or file anything on the owner's behalf.
-
-## Evidence labels
-
-Use these labels in documentation, seeded reference content, and high-impact AI explanations:
-
-- Approved founder decision
-- Approved project constraint
-- Founder direction
-- Firsthand user observation
-- Operator-reported evidence
-- Verified external fact
-- Public product claim
-- Analyst inference
-- Proposal
-- Unknown
-- Pending verification
-- Professional review required
-
-Never upgrade the status of a statement silently.
-
-## BMBE guardrails
-
-BMBE means Barangay Micro Business Enterprise under RA 9178. It is not an alternative market outside MSMEs; it is a special certification or status potentially available to qualified micro enterprises.
-
-**Placement:** BMBE is one path inside Permits, delivered in M3. It is not a headline feature and not a separate engine. It sits in the free tier, because the same information is available free from Negosyo Centers and competing against free is unwinnable. The guardrails below stand unchanged (DL-010).
-
-The application may:
-
-- collect an owner-provided eligibility profile;
-- record an asset snapshot and its evidence;
-- flag that the business may appear eligible;
-- store the DTI or Negosyo Center Certificate of Authority;
-- track certificate issue and expiry dates;
-- record whether BIR treatment has been confirmed;
-- warn that BMBE income-tax exemption and the 8% income-tax option require careful compatibility checking.
-
-The application must not:
-
-- issue or imitate a BMBE Certificate of Authority;
-- automatically certify eligibility;
-- automatically activate an income-tax exemption;
-- treat land as part of the statutory asset ceiling calculation;
-- assume every service business qualifies;
-- hide the professional-services exclusion;
-- assume that BMBE removes all taxes, registrations, books, invoices, employee obligations, or LGU requirements.
-
-## Business-classification model
-
-Keep these dimensions separate:
-
-- legal form, such as sole proprietorship, partnership, corporation, or cooperative;
-- enterprise size, such as micro, small, medium, or larger;
-- certifications and incentive statuses, including BMBE;
-- tax registrations or treatments;
-- operating model, such as inventory-centred, job-centred, or mixed;
-- customer model, such as B2C, B2B, government, or mixed.
-
-A business serving corporations or banks may still itself be a micro, small, or medium enterprise. Client size does not determine the service provider's enterprise size.
-
-Reference-case locations:
-
-- DUO BREW: Mandaluyong City;
-- car-tint installation services: Pasig City;
-- air-conditioning installation, cleaning, and repair: B2B service case with mostly corporate and bank clients; exact operating details remain pending interview.
-
-## Tenancy rule
-
-Established in M1 and binding on every table added afterwards:
-
-> A person reaches a business through `business_memberships` and through nothing else.
-
-- No other column, anywhere, confers access.
-- No development-only business identifier, seeded owner, or bypass may stand in for a real membership.
-- `authenticated` holds **no write privilege** on any table. Every write goes through a `SECURITY DEFINER` function with an empty `search_path`, so grants and policies fail independently and a mistake in one does not open the other.
-- Identity inside those functions comes from `auth.uid()` only, never from a parameter. A function that takes a user id is a function that can be impersonated through.
-- Reuse `private.is_business_member()` rather than copying the membership predicate into each policy, where one copy could drift.
-
-## Architecture guardrails
-
-- Keep the first codebase as one Next.js application.
-- Use feature-oriented folders, not a monorepo.
-- Shared services may be reused by both domains.
-- Domain rules must not directly import private internals from the other domain.
-- Cross-domain data transfer must use explicit, typed service boundaries.
-- Do not resolve the long-term inventory-versus-jobs architecture through premature abstraction.
-- Build the concrete reference workflows first.
-
-## Required checks before reporting completion
-
-Run the available equivalents of:
-
-- type checking;
-- linting;
-- unit tests added for the change;
-- production build;
-- relevant end-to-end tests when applicable.
-
-Report:
+Report exactly:
 
 1. files changed;
-2. database migrations added;
-3. tests run;
-4. known limitations;
-5. security or RLS implications;
-6. next build-plan task.
+2. user capability now available;
+3. migrations added or changed;
+4. tests actually executed and results;
+5. tests not executed and why;
+6. security, privacy, legal, and RLS implications;
+7. remaining evidence status;
+8. deviations or decisions requiring founder approval;
+9. next authorised build-plan task.
 
-Do not claim a task is complete if the build or required tests fail.
+Do not claim completion when required checks fail or were not run.

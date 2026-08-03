@@ -1,59 +1,55 @@
 # Technical Foundation
 
-| Decision | Prototype selection |
+| Decision | Phase 1A selection |
 | --- | --- |
-| Delivery | Responsive Progressive Web Application |
-| Application framework | Next.js App Router |
+| Delivery | Responsive web application; PWA packaging after workflow validation |
+| Framework | Next.js App Router |
 | Language | TypeScript |
 | UI | Tailwind CSS + shadcn/ui |
 | Backend | Supabase |
 | Database | PostgreSQL through Supabase |
-| Authentication | Supabase Auth using current SSR guidance |
+| Authentication | Supabase Auth with SSR |
 | File storage | Supabase Storage |
-| Authorisation | PostgreSQL Row Level Security |
-| Deployment target | Standards-compatible Next.js hosting |
-| Repository model | One application repository, not a monorepo |
-| Status | Selected for Phase 1A prototype; revisitable after validation |
+| Authorisation | PostgreSQL RLS plus server/database command checks |
+| Repository | One application repository |
+| AI | Optional assisted layer over deterministic domain outputs |
+| Status | Prototype architecture; revisitable after validation |
 
-## 1. Why this stack
+## 1. Architectural principles
 
-The prototype needs:
+1. **Domain truth before AI prose.**
+2. **Business membership is the only route to business data.**
+3. **High-impact writes are authorised server-side or in database RPCs.**
+4. **The dashboard aggregates domain actions; it does not own every domain record.**
+5. **Missing data produces an unknown state, not an invented value.**
+6. **A rule is versioned data with provenance, not hard-coded anonymous prose.**
+7. **A test is evidence only after it executes the intended path.**
+8. **The product must remain usable without an AI provider.**
+9. **Current scope is a narrow prototype, not a universal MSME platform implementation.**
 
-- one codebase for desktop and mobile web;
-- installable PWA capability;
-- fast solo development;
-- secure authentication and business-level access control;
-- relational data;
-- private document storage;
-- low initial infrastructure complexity;
-- a future path to native packaging without starting with two codebases.
+## 2. Current implementation truth
 
-Next.js supports the App Router, built-in TypeScript setup, and an official PWA guide. Supabase provides PostgreSQL, authentication, storage, and Row Level Security. Tailwind and shadcn/ui support rapid, customisable interface development.
+As of the public repository review on 2026-08-03:
 
-This is a prototype stack decision, not a claim that it is permanently optimal.
+| Capability | Status |
+| --- | --- |
+| App scaffold, auth screens, business creation/switching | Implemented |
+| Membership-based tenancy foundation | Implemented; prior verification exists |
+| Application CI | Present |
+| Full database test execution in CI | Not established |
+| Business lifecycle fields | Migration exists |
+| Tracked items | Migration exists |
+| Daily sales | Migration and RPCs exist |
+| Stocks user interface | Not implemented |
+| Reorder calculation | Not implemented |
+| Action dashboard | Not implemented |
+| Permits, documents, taxes, AI integration | Not implemented |
 
-## 2. Version policy
+Do not derive repository status from commit titles alone. The source tree, migrations, routes, executed tests, and observed runtime are the evidence.
 
-- Use the latest stable, mutually compatible versions at project initialisation.
-- Do not use prerelease or canary packages without explicit approval.
-- Use a Node.js version supported by the selected Next.js release. Next.js 16 documentation currently lists Node.js 20.9 as the minimum.
-- Commit the lockfile.
-- Record major upgrades in `DECISION_LOG.md`.
-- Do not pin version numbers in product documentation unless a compatibility requirement exists.
+## 3. Code organisation
 
-## 3. Initial project setup
-
-Recommended scaffold:
-
-```bash
-npx create-next-app@latest . --typescript --eslint --tailwind --app --src-dir --import-alias "@/*"
-```
-
-Then add Supabase and shadcn/ui using their current official installation instructions.
-
-Use npm unless the founder explicitly selects another package manager.
-
-## 4. Code organisation
+Target organisation:
 
 ```text
 src/
@@ -66,295 +62,427 @@ src/
 │   └── shared/
 ├── features/
 │   ├── businesses/
+│   ├── dashboard/
 │   ├── documents/
-│   ├── start-comply/
-│   └── operate-decide/
+│   ├── stocks/
+│   ├── permits/
+│   └── taxes/
 ├── lib/
 │   ├── supabase/
 │   ├── auth/
 │   ├── validation/
+│   ├── evidence/
+│   ├── rules/
+│   ├── ai/
 │   └── utilities/
 └── types/
 
 supabase/
 ├── migrations/
-└── seed.sql
+└── tests/database/
 
 tests/
 ├── unit/
+├── integration/
 └── e2e/
 ```
 
-Avoid a monorepo during Phase 1A.
+Internal legacy codenames may survive in migration history or package names, but new user-facing components use Stocks, Permits, and Taxes terminology.
 
-## 5. Domain-boundary rule
+Avoid a monorepo during Phase 1A unless a measured build or ownership problem requires one.
 
-`start-comply` and `operate-decide` may depend on typed shared services such as businesses, documents, identity, and audit history.
+## 4. Domain boundaries
 
-They must not directly manipulate each other’s private tables or internal implementation details.
+Stocks, Permits, and Taxes may use typed shared services:
 
-Cross-domain information should pass through explicit application services.
+- identity and businesses;
+- memberships and authority;
+- documents and evidence;
+- tasks and deadlines;
+- audit history;
+- notifications;
+- dashboard action presentation.
 
-Example:
+They must not directly manipulate each other’s private tables.
 
-- Operate & Decide may submit owner-confirmed purchase documents to the shared document vault.
-- Start & Comply may reference those documents.
-- Start & Comply must not automatically declare the purchase deductible.
+Taxes may consume owner-confirmed sales or expense records through explicit interfaces. It must not query arbitrary Stocks implementation details or assume operational records are complete tax records.
 
-## 6. Initial data model
+The dashboard consumes domain-produced action candidates. It must not bypass domain commands to mutate private tables.
 
-This is a prototype model, not the final enterprise architecture.
+## 5. Shared action contract
 
-This section originally predated `docs/PROJECT_BLUEPRINT.md` v2.0 and was incomplete: it omitted daily sales and suppliers entirely, and its Operate & Decide list did not carry the buying facts that a reorder recommendation needs. It is corrected here. **Where this section and the blueprint still disagree, the blueprint governs.**
+Start as an application-layer typed read model, not a universal database table.
 
-Do not create every table at once. Add tables only when the corresponding build-plan slice begins. Status below reflects what exists in `supabase/migrations`.
+```ts
+type EvidenceStatus =
+  | "verified"
+  | "implemented_unverified"
+  | "documented_only"
+  | "planned"
+  | "research_required";
 
-### Shared
+type ActionDomain = "stocks" | "permits" | "taxes" | "shared";
 
-| Table | Status |
-| --- | --- |
-| `profiles` | Built (M1) |
-| `businesses` | Built (M1); `legal_name` and `status` added in M2 |
-| `business_memberships` | Built (M1) |
-| `audit_events` | Built (M1) |
-| `branches` | Not yet needed |
-| `documents` | M4 |
-| `document_links` | M4 |
+interface ActionCandidate {
+  id: string;
+  businessId: string;
+  domain: ActionDomain;
+  title: string;
+  reason: string;
+  nextAction: string;
+  priority: "low" | "medium" | "high" | "critical";
+  dueAt?: string;
+  sourceRefs: string[];
+  sourceFreshness?: string;
+  missingData: string[];
+  evidenceStatus: EvidenceStatus;
+  confidence?: "insufficient" | "low" | "medium" | "high";
+  requiresConfirmation: boolean;
+  authorisedActions: string[];
+}
+```
 
-`businesses` carries three separate name-and-lifecycle facts. `name` is what the owner calls the business and exists from the moment the row is created. `legal_name` is the registered DTI or SEC name and **must stay nullable**, because a business in Setup mode has not got one yet. `status` is `draft | registering | operating | closed` and is what drives Setup mode versus Running mode.
+Rules:
 
-### Operate & Decide — Stocks
+- Domain code creates the candidate.
+- Deterministic urgency overrides AI ranking.
+- AI may rewrite `title`, `reason`, or `nextAction` for clarity without changing facts.
+- Source references and missing data are immutable inputs to the AI layer.
+- The dashboard never treats an AI-only candidate as an obligation.
+- Do not persist a general action table until at least two domains prove that the lifecycle and fields are genuinely shared.
 
-| Table | Status | Note |
-| --- | --- | --- |
-| `tracked_items` | Built (M2) | 8–12 priority items, with `unit`, `pack_size`, `minimum_order_qty`, `latest_unit_cost` |
-| `daily_sales` | M2 | One gross-sales figure per business per day. Load-bearing for all of Taxes. |
-| `stock_counts` | M2 | |
-| `suppliers` | M2 | Adds `tracked_items.supplier_id` by `ALTER` when it lands |
-| `purchases` | M2 | |
-| `purchase_lines` | M2 | |
-| `receiving_events` | M2 | |
-| `purchase_needs` | M2 | The reorder recommendation and the owner's decision on it |
-| `discrepancies` | M2 | Secondary to the buying decision, not the headline |
-| `owner_actions` | M2 | |
-| `action_outcomes` | M2 | |
-| `inventory_movements` | Deferred | Do not build a general movement ledger before the concrete flow works |
+## 6. Evidence and provenance model
 
-`daily_sales` and `latest_unit_cost` are the only sources of a peso figure in Stocks. Without them a shortage can only ever be reported in kilos, and nothing tax-related can be computed at all.
+Material facts should support:
 
-### Start & Comply — Permits
+- `source_type`;
+- `source_reference`;
+- `recorded_by`;
+- `recorded_at`;
+- `effective_from` / `effective_to`;
+- `verified_at`;
+- `evidence_status`;
+- `correction_of` or version;
+- `notes` for uncertainty, not hidden assumptions.
 
-| Table | Status |
-| --- | --- |
-| `compliance_cases` | M3 |
-| `compliance_tasks` | M3 |
-| `task_assignments` | M3 |
-| `fee_records` | M3 |
-| `status_events` | M3 |
-| `business_certifications` | M3 (BMBE Certificate of Authority) |
-| `eligibility_assessments` | M3 (non-binding screening only) |
-| `asset_snapshots` | M3 |
-| `certification_effects` | M3 |
+Legal and compliance rules also require:
 
-The RA 11032 clock needs the date of complete submission, the 3 / 7 / 20 transaction class, and the submission receipt as evidence. The receipt is a document, so the statutory clock depends on M4.
+- jurisdiction;
+- agency;
+- business applicability;
+- official citation;
+- effective date;
+- supersession relationship;
+- last-reviewed date;
+- reviewer or verification method.
 
+AI output is never a source.
 
-### Enterprise classification data
+## 7. Stocks data and calculations
 
-Avoid one overloaded field for “business type.”
+Current/near-term records may include:
 
-Model separately:
+- priority tracked items;
+- stock counts;
+- supplier or supplier cadence;
+- lead time;
+- pack size and minimum order quantity;
+- purchases and receiving;
+- waste/spoilage/unavailability events;
+- purchase recommendations and owner decisions;
+- outcomes;
+- daily sales when relevant.
 
-- `legal_form`;
-- `enterprise_size_class`;
-- `customer_model`;
-- `operating_model`;
-- `certification_status`;
-- `tax_registration_status`.
+### Daily sales boundary
 
-A business serving corporate or bank clients must not be classified as large based on client type alone.
+Daily sales is:
 
-### BMBE modelling constraint
+- required for sales-based tax estimates;
+- potentially useful for demand analysis;
+- not required for every low-stock or purchase-list action;
+- not proof that tax records are complete;
+- not automatically comparable across businesses or periods.
 
-Do not create a single boolean such as `is_bmbe`.
+### Numeric safety
 
-Use separate concepts:
+- Validate type, scale, date, and business membership.
+- Do not use one global hard ceiling for legitimate business values.
+- After a sufficient baseline exists, require confirmation for anomalous values.
+- Show the entered figure and usual range.
+- Log the confirmation.
+- Treat missing days and corrected records explicitly.
+- Every derived value includes input coverage and formula version.
 
-- `eligibility_assessments` for non-binding screening output;
-- `asset_snapshots` for dated, evidence-labelled owner or document values;
-- `business_certifications` for an actual Certificate of Authority and its validity period;
-- `certification_effects` for a claimed tax, labour, financing, training, or LGU consequence and its confirmation status.
+### Reorder safety
 
-A certificate and a tax effect are not the same fact.
+Do not calculate a confident quantity unless compatible values exist for:
 
-Suggested status values should distinguish:
+- current quantity and unit;
+- expected usage or owner-defined minimum;
+- time until next purchase/delivery;
+- lead time;
+- pack size/MOQ where relevant.
 
-- potentially eligible;
-- application planned;
-- application submitted;
-- certificate issued;
-- certificate expired;
-- certificate revoked or cancelled;
-- effect unconfirmed;
-- effect document-supported;
-- professional review required.
+Otherwise return a bounded qualitative action with missing fields.
 
-Do not calculate final BMBE eligibility or activate tax treatment solely in client code.
+## 8. Permits and compliance rules
 
-## 7. Multi-tenancy and authorisation
+A compliance rule is not universal unless its scope says so.
 
-Each business-owned record must be linked to a `business_id`.
+Minimum rule fields:
 
-Users access a business through `business_memberships` **and through nothing else.** No other column confers access, and no development-only identifier may stand in for a real membership.
+- rule ID and version;
+- jurisdiction and agency;
+- business/activity conditions;
+- official source;
+- effective and expiry/supersession dates;
+- required documents;
+- fee status or source;
+- processing classification when officially published;
+- evidence required to start a clock;
+- result boundaries;
+- last verification date.
 
-As implemented in M1 and carried into every table since:
+### RA 11032 safety
 
-- `authenticated` holds no write privilege on any table. Every write goes through a `SECURITY DEFINER` function with an empty `search_path`, so grants and policies fail independently and a mistake in one does not open the other.
-- Identity inside those functions comes from `auth.uid()` only, never from a parameter. A function taking a user id is a function that can be impersonated through.
-- `private.is_business_member()` holds the membership predicate once rather than repeating it in each policy, where one copy could drift.
-- That helper must be executable by `authenticated`, because a policy expression is evaluated as the invoking role rather than as the table owner. Granting it opens nothing: `private` is absent from `api.schemas`, so PostgREST publishes no endpoint for it, and the function takes no user id.
+Do not reduce RA 11032 to a universal 3/7/20 countdown.
 
-Roles arrive in the milestone that first uses them, each by its own `alter type ... add value`. `business_role` currently carries `owner` alone.
+A clock may start only when the product has enough evidence for the relevant trigger. Automatic-approval language must account for complete documentary requirements, required payments, applicable classification, Citizen’s Charter, and other statutory or sector-specific conditions.
 
-Eventual roles for the prototype:
+Until a legally reviewed flow exists, alerts say “processing period may have passed—review or escalate” rather than “approved.”
 
-- `owner`
-- `admin`
-- `staff`
-- `representative`
-- `viewer`
+## 9. Tax rules and calculations
 
-Roles alone are insufficient. Domain actions must also check business membership and, for representatives, task-specific authority where applicable.
+Tax calculations are pure deterministic functions over explicit inputs and a versioned rule.
 
-Every exposed Supabase table must:
+Every output returns:
 
-1. enable RLS;
-2. have explicit policies;
-3. deny access when no policy matches;
-4. be tested for cross-business isolation.
+- input period;
+- input coverage;
+- taxpayer facts used;
+- missing facts;
+- rule version and effective date;
+- calculation;
+- estimate/official boundary;
+- warnings;
+- next review action.
 
-Never expose a service-role key to the client.
+The LLM does not calculate the authoritative amount, select eligibility, or choose an election.
 
-## 8. Documents
+BMBE certification, BIR treatment, and the 8% option are separate facts. The system must not treat screening as certification or display BMBE income-tax exemption and the 8% option as simultaneously applicable.
+
+Rules must be checked against current primary sources at implementation and periodically thereafter.
+
+## 10. AI architecture
+
+Recommended flow:
+
+```text
+Business records + versioned rules
+             ↓
+Deterministic domain service
+             ↓
+ActionCandidate / calculation result
+             ↓
+Minimum necessary context
+             ↓
+AI explanation or summary
+             ↓
+Owner confirmation / authorised command
+             ↓
+Server or SECURITY DEFINER RPC
+```
+
+AI requirements:
+
+- server-side provider key only;
+- minimum necessary business data;
+- no client record training by default;
+- model and prompt version logging where outputs affect decisions;
+- source references preserved;
+- structured output validation;
+- timeout and non-AI fallback;
+- no direct unrestricted database access;
+- no autonomous filing, payment, communication, or role assignment;
+- no silent retries that duplicate high-impact actions.
+
+Prompt rule:
+
+> When required evidence is missing, return `unknown` and ask for the missing fact. Never complete the gap from general knowledge.
+
+## 11. Multi-tenancy and authorisation
+
+Each business-owned record has `business_id`.
+
+Users access a business through `business_memberships` and no other identity field.
+
+Existing pattern retained:
+
+- no direct authenticated table writes where RPC control is required;
+- `SECURITY DEFINER` functions use an empty `search_path`;
+- identity comes from `auth.uid()`;
+- helper predicates remain outside published API schemas;
+- RLS on every exposed table;
+- grants and RLS provide independent failure layers.
+
+Before adding roles beyond owner:
+
+- define read/write matrix by table and action;
+- ensure audit history is not a wider read path than the underlying data;
+- model representative authority by task and validity period;
+- test role changes, revocation, and stale sessions.
+
+Paid or lifecycle restrictions that matter must be enforced server-side, not only by hidden React components.
+
+## 12. Abuse controls
+
+Before public testing:
+
+- cap business creation per account or document a different ceiling;
+- limit expensive or high-growth RPCs;
+- monitor audit-table growth;
+- rate-limit authentication and AI endpoints where platform controls are insufficient;
+- make idempotency explicit for repeated commands;
+- provide administrative recovery for accidental growth without exposing service credentials.
+
+## 13. Documents and privacy
 
 Documents are private by default.
 
-Store:
+Store metadata needed for provenance and access, not portal passwords or unnecessary personal data.
 
-- storage path;
-- business owner;
-- uploader;
-- document category;
-- evidence label;
-- source or issuer;
-- issue date;
-- expiry date;
-- verification status;
-- checksum or immutable identifier when useful;
-- created and updated timestamps.
+Use signed access. Validate file size and type. Define retention, removal, export, and account-deletion behaviour before real owner documents are accepted.
 
-Use signed access rather than public buckets for sensitive business documents.
+Audit metadata policy:
 
-Avoid storing secrets or government portal credentials.
+- one shared enforcement point;
+- deliberate allowed keys;
+- no false comments claiming a TypeScript filter protects SQL writes;
+- sensitive and financial values justified by purpose and read-audience parity;
+- role changes trigger a privacy review.
 
-## 9. PWA and offline strategy
+## 14. PWA and offline strategy
 
-Phase 1A:
+Validate the online workflow first.
 
-- responsive mobile-first layout;
-- web app manifest;
+Near term:
+
+- mobile-first responsive UI;
+- connectivity status;
+- clear failure/retry behaviour;
+- safe read-only cache where appropriate.
+
+After validation:
+
+- manifest and icons;
 - installability;
-- cached application shell where appropriate;
-- clear online or offline status;
-- safe read-only fallback for selected previously loaded screens.
+- application-shell caching;
+- TWA evaluation.
 
-Defer complex offline writes and background synchronisation until the online domain flows and conflict rules are stable.
+Defer offline writes until commands are idempotent and conflicts are defined per record type. Never present unsynchronised compliance or tax status as confirmed.
 
-When offline writes are introduced:
+## 15. Validation and forms
 
-- queue explicit commands rather than silently overwriting records;
-- show pending-sync status;
-- retain client-generated IDs;
-- make commands idempotent;
-- define conflict resolution per record type;
-- never present unsynchronised compliance status as confirmed.
+Use shared schema validation for every external input.
 
-## 10. Validation and forms
+- Client validation improves usability.
+- Server/RPC validation is authoritative.
+- Query parameters entering security-sensitive calls use allow-lists.
+- Monetary and date inputs include locale-safe parsing and adversarial tests.
+- Confirmation is required for overwrites and anomalous high-impact values.
+- Accessibility includes label association, focus management, errors, keyboard flow, and screen-reader testing.
 
-Use schema validation for all external input.
+## 16. Testing and verification gates
 
-Recommended:
+Application:
 
-- Zod for shared validation schemas;
-- React Hook Form where client-side form state is complex;
-- server-side validation even when client validation exists.
+- type check;
+- lint;
+- unit tests;
+- production build;
+- route-level integration;
+- end-to-end owner workflow.
 
-Avoid generic form builders during the first slices.
+Database:
 
-## 11. Testing baseline
+- reset from zero;
+- migration ordering;
+- pgTAP;
+- positive and negative tenant cases;
+- role and audit parity;
+- RPC behaviour;
+- deliberate broken-policy test.
 
-Required categories:
+Calculations:
 
-- unit tests for calculations and status transitions;
-- RLS tests for multi-business isolation;
-- integration tests for important database workflows;
-- end-to-end tests for the owner’s main path;
-- production build in continuous integration.
+- boundary values;
+- missing values;
+- unit mismatch;
+- zero and negative;
+- extreme but valid;
+- stale baseline;
+- corrected records;
+- insufficient evidence.
 
-High-priority end-to-end flows:
+AI:
 
-1. sign in and create business;
-2. owner invites or assigns a representative;
-3. compliance case records a task, fee, receipt, and temporary expiry;
-4. inventory flow records count, purchase decision, outflow, receiving, discrepancy, and outcome;
-5. unauthorised user cannot access another business.
+- structured output validation;
+- prompt-injection resistance around uploaded text;
+- unsupported-claim refusal;
+- missing-evidence behaviour;
+- source preservation;
+- non-AI fallback.
 
-## 12. Audit and timestamps
+A verification record states command, environment, commit, result, and assertion count.
 
-Use server-generated timestamps for authoritative events.
+## 17. Operational readiness
 
-Audit:
+Before unsupervised use:
 
-- actor;
-- business;
-- domain;
-- action;
-- entity type and ID;
-- before and after summary where appropriate;
-- source;
-- timestamp.
+- error, loading, and not-found boundaries;
+- structured logging without sensitive data;
+- observability for failed commands and AI calls;
+- backup and recovery understanding;
+- rate/usage monitoring;
+- privacy notice and data-removal path;
+- security review;
+- accessibility and low-cost-device test;
+- slow-network test.
 
-Do not store passwords, OTPs, tokens, or unnecessary sensitive content in audit records.
+## 18. Anti-hallucination development protocol
 
-## 13. AI integration boundary
+Every AI coding task must begin by reading the controlling documents and inspecting the current tree.
 
-Do not integrate an AI provider in the first foundation milestone.
+The task prompt must list:
 
-First establish:
+- verified current state;
+- files allowed to change;
+- exact in-scope behaviour;
+- explicit exclusions;
+- tests that must run;
+- evidence label expected after completion.
 
-- typed domain data;
-- evidence labels;
-- deterministic calculations;
-- auditability;
-- user confirmation points.
+Claude Code or another coding agent must not:
 
-Later AI calls must:
+- infer missing requirements from future milestones;
+- create tables because they are mentioned as eventual concepts;
+- mark work complete without executed checks;
+- convert hypotheses into requirements;
+- upgrade legal claims without primary sources;
+- rewrite decision history;
+- introduce a universal abstraction before two concrete workflows prove it;
+- add AI where deterministic code is sufficient;
+- claim a UI exists because types or migrations exist.
 
-- use the minimum necessary data;
-- treat BMBE screening as preliminary and evidence-dependent;
-- avoid training on client records by default;
-- record model and prompt version;
-- distinguish source fact from inference;
-- require owner confirmation before high-impact changes;
-- avoid autonomous filing, payment, or legal representation.
+Completion report format:
 
-## 14. Official technical references
+1. files changed;
+2. user capability now available;
+3. tests actually executed and results;
+4. tests not executed and why;
+5. remaining evidence status;
+6. deviations or new decisions requiring approval.
 
-- Next.js App Router and installation: https://nextjs.org/docs/app
-- Next.js Progressive Web Apps guide: https://nextjs.org/docs/app/guides/progressive-web-apps
-- Supabase with Next.js: https://supabase.com/docs/guides/getting-started/quickstarts/nextjs
-- Supabase Auth for Next.js: https://supabase.com/docs/guides/auth/quickstarts/nextjs
-- Supabase Row Level Security: https://supabase.com/docs/guides/database/postgres/row-level-security
-- Supabase Storage access control: https://supabase.com/docs/guides/storage/security/access-control
-- Tailwind framework guides: https://tailwindcss.com/docs/installation/framework-guides
-- shadcn/ui Next.js installation: https://ui.shadcn.com/docs/installation/next
+## 19. Phase 1A exclusions
+
+No full POS, ERP, accounting, payroll, HR, lending, banking, insurance, marketplace, nationwide rules database, direct government filing/payment, autonomous agent, professional marketplace, all-vertical engine, production-grade offline sync, subscription billing, or production launch.
