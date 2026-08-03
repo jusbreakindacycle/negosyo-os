@@ -104,12 +104,22 @@ jobs:
           # back, so no seed data is required. supabase/seed.sql does not exist;
           # skipping seeding explicitly avoids depending on how a missing file
           # referenced by config.toml happens to be treated.
-          if supabase db reset --help 2>&1 | grep -q -- '--no-seed'; then
-            supabase db reset --local --no-seed
-          else
-            echo "note: this CLI has no --no-seed flag; resetting with seeding enabled"
-            supabase db reset --local
-          fi
+          # The help text is captured before it is searched rather than piped
+          # into `grep -q`. Under `pipefail` that pipeline reports failure even
+          # when the flag is present: grep exits at the first match, the CLI
+          # writes into a closed pipe, and its SIGPIPE status (141) becomes the
+          # status of the whole pipeline. The first run of this job took the
+          # fallback branch for exactly that reason.
+          reset_help=$(supabase db reset --help 2>&1 || true)
+          case "$reset_help" in
+            *--no-seed*)
+              supabase db reset --local --no-seed
+              ;;
+            *)
+              echo "note: this CLI offers no --no-seed flag; resetting with seeding enabled"
+              supabase db reset --local
+              ;;
+          esac
 
       - name: Run database test suites
         shell: bash
