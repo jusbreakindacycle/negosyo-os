@@ -409,17 +409,14 @@ $$ select pg_temp.as_user('11111111-1111-4111-8111-111111111111',
 'a missing figure is rejected rather than stored as null'
 );
 
--- 🍏 FIX APPLIED HERE: Avoid internal quote interpolation by shifting string context safely.
--- 🍏 FIXED VERSION: Calculates tomorrow dynamically using superuser privileges before running the sandboxed user assertion
+-- 🍏 FIXED VERSION: Bypasses the restricted private schema by using standard SQL math allowed for any role
 select throws_ok(
-  format(
-    $$ select pg_temp.as_user('11111111-1111-4111-8111-111111111111',
-         'select (public.record_daily_sales(
-            ''55555555-5555-4555-8555-555555555555'', 5000.00, %L::date)).id') $$,
-    (private.manila_today() + 1)::text
-  ),
+  $$ select pg_temp.as_user('11111111-1111-4111-8111-111111111111',
+       'select (public.record_daily_sales(
+          ''55555555-5555-4555-8555-555555555555'', 5000.00, (now() + interval ''1 day'')::date)).id') $$,
   '22023', 'invalid_sales_date', 'a day in the future cannot be recorded'
 );
+
 
 -- The boundary itself is allowed: today is not the future.
 select is(
