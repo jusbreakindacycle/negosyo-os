@@ -47,6 +47,7 @@ The priority-stock and buying loop, informed by DUO BREW in Mandaluyong City. Pr
 - [ ] Record a stock count.
 - [ ] Record a delivery or receiving event.
 - [x] Record **daily gross sales** as one number per day.
+- [ ] Confirm before replacing a day that already has a figure — never a silent overwrite (DL-042).
 - [ ] Calculate days-to-stockout.
 - [ ] Produce a reorder recommendation with quantity.
 - [ ] Record the owner's approve, change, or reject decision.
@@ -55,8 +56,11 @@ The priority-stock and buying loop, informed by DUO BREW in Mandaluyong City. Pr
 - [ ] Record bounded owner action and verified outcome.
 - [ ] Add deterministic calculation tests.
 - [ ] Add RLS and cross-business isolation tests for every new table.
+- [x] Hold the audit trail's read audience to the tables it records, by test (DL-043).
 
 **Exit condition:** The workflow connects count, delivery, daily sales, reorder recommendation, purchase, discrepancy, action, and verified outcome. Variance appears only once a baseline exists.
+
+**Historical note, not a task.** The daily-sales slice went in as commit `b912c53` on `feature/milestone-2-stocks`, which also carried the DL-027 to DL-040 documentation realignment. That documentation work was already sitting uncommitted in the working tree when the slice began, and could not be split out without interactive staging, which is unavailable in this environment. The branch was squash-merged as `6321534` (PR #4) and deleted, so `b912c53` is not reachable from `main` and no separate documentation commit exists to look for. Recorded so a later reader does not go hunting for one.
 
 ## Milestone 3 — Permits, the statutory clock, and Setup mode
 
