@@ -568,3 +568,34 @@ Re-entering a day that already exists is a **correction**, not an error. The RPC
 **Pending verification.** The migration is applied to the linked development project and sixteen structural checks pass against it: RLS enabled, one member-only `SELECT` policy and no write policy, no write grant to `authenticated`, no privilege at all for `anon`, both RPCs `SECURITY DEFINER` with an empty `search_path`, and neither taking a user id. Three negative cases were observed failing for the intended reason against the live API as `anon` — `permission denied` for the table, for `record_daily_sales`, and for `delete_daily_sales`.
 
 The behavioural half of `supabase/tests/database/05_daily_sales.test.sql` has **not** run. pgTAP is not installed on the linked project, installing it needs write DDL that the read-only MCP connection refuses, and `supabase test db` needs Docker, which is still not installed (DL-026). The positive paths — the upsert correction, the delete, the audit metadata, and cross-business isolation with real rows — are written but unverified. Under the standing rule in DL-026 they are not evidence until they have run.
+
+---
+
+## DL-042 — The daily-sales screen must confirm before replacing a recorded day
+
+**Date:** 2026-08-02
+**Status:** Approved founder decision
+
+`public.record_daily_sales()` upserts on `(business_id, sales_date)`. DL-041 records why, and that decision stands: re-entering a day is a correction, not an error, and an owner who typed 12,750.50 and meant 45,000.00 must not meet a unique-violation message or end up with two rows the quarter counts twice.
+
+The database cannot tell those two cases apart. A deliberate correction and a mistyped date arrive as the same call, with the same signature, and both succeed. Separating them is the interface's job, and it is the only place it can be done.
+
+### The requirement
+
+Where a figure already exists for the target date, the screen must ask before writing. It must never overwrite silently.
+
+> May naitala na kayo para sa araw na ito: ₱5,000. Palitan ng ₱5,500?
+
+Both figures appear, so the owner is confirming a specific replacement rather than agreeing to an abstraction. The check is a read of `public.daily_sales` for that business and date, which a member is already permitted to make under `daily_sales_select_member` — no new grant, policy, or RPC is needed.
+
+The confirmation applies to backdated entry as much as to today, and matters more there. A wrong date is a typing error, and typing errors happen where a date is typed.
+
+### The risk being bought off
+
+A mistyped date silently replaces a legitimate day's takings. The lost figure flows out of the quarterly gross that feeds the percentage-tax estimate and the ₱3,000,000 VAT threshold position, and nothing in the product looks wrong afterwards. The audit trail makes it recoverable — `daily_sales.corrected` carries `previous_gross_amount` — but recovery requires somebody to notice, and the owner has no reason to. The surprise is the defect, not the loss.
+
+### What this is not
+
+This is **not** a database constraint, and must not become one. A rule forbidding an overwrite would break the correction path DL-041 requires. The RPC keeps upserting; the screen does the asking.
+
+Scope: a **UI requirement for the Milestone 2 Stocks screens**, recorded now and deliberately not implemented now. No daily-sales interface exists yet; `src/types/database.ts` is currently the only place in `src/` that mentions the table.
