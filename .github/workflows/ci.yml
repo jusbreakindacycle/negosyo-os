@@ -10,6 +10,12 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Nothing here writes to the repository, and no job reads a secret. The
+# database job runs entirely against a disposable local stack on the runner:
+# no linked project, no production credentials, no service-role key.
+permissions:
+  contents: read
+
 jobs:
   # Job 1: Your original Frontend, Lint, and Unit Checks
   verify:
@@ -45,6 +51,7 @@ jobs:
   test-database:
     name: Run pgTAP Security Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout Repository
@@ -53,13 +60,144 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pinned, not `latest`. A CLI release can change how migrations apply
+          # or how results are reported, and a verification gate whose toolchain
+          # moves on its own is not repeatable. Matches the `supabase`
+          # devDependency in package.json.
+          version: 2.111.0
 
-      - name: Start Supabase Local Stack
-        run: supabase start
+      - name: Start disposable Supabase stack
+        shell: bash
+        run: |
+          set -o pipefail
 
-      - name: Run pgTAP Tests
-        run: supabase test db
+          # `supabase start` prints the local API URL together with the local
+          # anon and service-role JWTs. They are the fixed local-development
+          # keys rather than project secrets, but they do not belong in a build
+          # log, so the output is captured and only a sanitised copy is shown
+          # if the step fails.
+          status=0
+          supabase start > supabase-start.log 2>&1 || status=$?
+
+          if [ "$status" -ne 0 ]; then
+            echo "::error::supabase start failed (exit $status); sanitised output follows"
+            sed -E \
+              -e 's/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/[REDACTED_JWT]/g' \
+              -e 's#(postgres(ql)?://[^:@]+:)[^@]+@#\1[REDACTED]@#g' \
+              -e 's/(([Kk]ey|[Ss]ecret|[Pp]assword|[Tt]oken)[[:space:]]*[:=][[:space:]]*)[^[:space:]]+/\1[REDACTED]/g' \
+              supabase-start.log
+            exit "$status"
+          fi
+
+          echo "Local stack started."
+
+      - name: Apply migrations from zero
+        shell: bash
+        run: |
+          set -o pipefail
+
+          # A separate step from the tests on purpose: a migration that cannot
+          # apply and a test that fails are different diagnoses, and this one
+          # should not be buried inside stack startup.
+          #
+          # The suites build their own fixtures inside a transaction they roll
+          # back, so no seed data is required. supabase/seed.sql does not exist;
+          # skipping seeding explicitly avoids depending on how a missing file
+          # referenced by config.toml happens to be treated.
+          if supabase db reset --help 2>&1 | grep -q -- '--no-seed'; then
+            supabase db reset --local --no-seed
+          else
+            echo "note: this CLI has no --no-seed flag; resetting with seeding enabled"
+            supabase db reset --local
+          fi
+
+      - name: Run database test suites
+        shell: bash
+        run: |
+          set -o pipefail
+
+          # A pre-run expectation counted from source. It is an approximation
+          # and is reported only for comparison -- the observed count below is
+          # the evidence, and a difference between the two is never on its own
+          # a reason to pass or fail.
+          expected=$(cat supabase/tests/database/*.test.sql \
+            | grep -E '^select[[:space:]]+[a-z_]+\(' \
+            | grep -vc 'no_plan' || true)
+
+          status=0
+          supabase test db --local 2>&1 | tee pgtap-output.log || status=$?
+
+          # pg_prove's summary line carries the total. If a future CLI reports
+          # verbose TAP instead, fall back to counting the assertion lines
+          # themselves. If neither yields a number the job fails: an unreported
+          # count must never be mistaken for a passing one.
+          observed=$(grep -Eo 'Tests=[0-9]+' pgtap-output.log | tail -n1 | cut -d= -f2 || true)
+          if [ -z "$observed" ]; then
+            observed=$(grep -Ec '^(ok|not ok) [0-9]+' pgtap-output.log || true)
+            if [ "$observed" = "0" ]; then
+              observed=""
+            fi
+          fi
+
+          suites=$(grep -Eo '[A-Za-z0-9_]+\.test\.sql' pgtap-output.log | sort -u || true)
+          executed=$(printf '%s\n' "$suites" | grep -c . || true)
+          in_repo=$(ls supabase/tests/database/*.test.sql | wc -l)
+
+          # Every reason this job may fail is decided before the summary is
+          # written, so what the summary reports is what actually happened.
+          reason=""
+          if [ "$status" -ne 0 ]; then
+            reason="database tests failed (exit $status)"
+          elif grep -Eq '^not ok ' pgtap-output.log; then
+            # Belt and braces: a harness that reported failing assertions but
+            # exited zero must not pass this gate.
+            reason="output contains failing assertions despite a zero exit code"
+          elif [ -z "$observed" ]; then
+            # An unreported count must never be mistaken for a passing one.
+            reason="no executed assertion count could be parsed from the test output"
+          elif [ "$executed" -ne "$in_repo" ]; then
+            reason="executed $executed suites but the repository holds $in_repo"
+          fi
+
+          if [ -n "$reason" ]; then result="FAIL -- $reason"; else result="pass"; fi
+
+          {
+            echo "## Database verification"
+            echo
+            echo "| Item | Value |"
+            echo "| --- | --- |"
+            echo "| Environment | disposable Supabase local stack on the runner |"
+            echo "| Supabase CLI | 2.111.0 (pinned) |"
+            echo "| Migrations | applied from zero before the suites ran |"
+            echo "| Suites in repository | $in_repo |"
+            echo "| Suites executed | $executed |"
+            echo "| Expected count before execution (static source estimate, not evidence) | $expected |"
+            echo "| Observed count in CI (parsed from execution output) | ${observed:-unparsed} |"
+            echo "| Result | $result |"
+            echo
+            echo "### Suites executed"
+            echo '```'
+            printf '%s\n' "$suites"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -n "$reason" ]; then
+            echo "::error::$reason"
+            # The test command's own exit code is preserved where it had one,
+            # so a failure is not flattened by having been piped through tee.
+            if [ "$status" -ne 0 ]; then exit "$status"; fi
+            exit 1
+          fi
+
+          echo "Observed $observed assertions across $executed suites (expected about $expected)."
+
+      - name: Upload database test output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pgtap-output
+          path: pgtap-output.log
+          if-no-files-found: warn
 
       - name: Stop Supabase Stack
         if: always()

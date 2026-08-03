@@ -272,14 +272,81 @@ select throws_ok(
   'an outsider cannot add an item to a business they do not belong to'
 );
 
+-- The outsider has to be refused an item that genuinely exists, and the test
+-- has to hold that item's real id before it switches roles.
+--
+-- Resolving the id inside the outsider's own session, as this assertion used
+-- to, cannot do that: tracked_items_select_member hides the row, the subselect
+-- returns null, and update_tracked_item() takes its missing-row branch. The
+-- error text is the same either way, so the assertion passed while the
+-- membership check was never asked about a real item. Under DL-026 that is not
+-- a test.
+--
+-- The three preconditions below fix what is being tested, so the same defect
+-- cannot return quietly.
+
+select isnt(
+  (select id from public.tracked_items where name = 'Beans'),
+  null::uuid,
+  'the protected item exists, so the id used below is a real one'
+);
+
+select is(
+  (select business_id from public.tracked_items where name = 'Beans'),
+  '33333333-3333-4333-8333-333333333333'::uuid,
+  'that item belongs to the business the outsider is not a member of'
+);
+
+select is(
+  pg_temp.as_user('ffffffff-ffff-4fff-8fff-ffffffffffff',
+    'select count(*)::int as n from public.tracked_items
+      where name = ''Beans'''),
+  '[{"n": 0}]'::jsonb,
+  'the outsider cannot see that item, so it is an id they could not have found for themselves'
+);
+
+select throws_ok(
+  format(
+    $$ select pg_temp.as_user('ffffffff-ffff-4fff-8fff-ffffffffffff', %L) $$,
+    format('select (public.update_tracked_item(%L, ''Renamed'')).id',
+           (select id from public.tracked_items where name = 'Beans'))),
+  '42501',
+  'not_a_member',
+  'an outsider handed the real id of another business''s item is still refused'
+);
+
+select results_eq(
+  $$ select count(*)::int from public.tracked_items
+      where business_id = '33333333-3333-4333-8333-333333333333'
+        and name = 'Beans' $$,
+  $$ values (1) $$,
+  'the refused edit left the item alone, so the guard fired before the update'
+);
+
+-- An id that exists nowhere answers identically, and deliberately so: telling
+-- the two apart would confirm that an id exists. That sameness is exactly why
+-- the assertion above has to supply a real one.
 select throws_ok(
   $$ select pg_temp.as_user('ffffffff-ffff-4fff-8fff-ffffffffffff',
        'select (public.update_tracked_item(
-          (select id from public.tracked_items where name = ''Beans''),
-          ''Renamed'')).id') $$,
+          ''99999999-9999-4999-8999-999999999999'', ''Renamed'')).id') $$,
   '42501',
   'not_a_member',
-  'an outsider cannot edit another business''s item'
+  'editing an id that does not exist reports the same error as one that is not yours'
+);
+
+-- The same id, offered by the member, gets past the membership check and stops
+-- at validation instead. Three outcomes therefore stay distinguishable -- absent
+-- row, real but inaccessible row, and bad argument -- so the 42501 above cannot
+-- be an artefact of either of the other two.
+select throws_ok(
+  format(
+    $$ select pg_temp.as_user('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', %L) $$,
+    format('select (public.update_tracked_item(%L, ''   '')).id',
+           (select id from public.tracked_items where name = 'Beans'))),
+  '22023',
+  'invalid_item_name',
+  'the member holding that same id reaches validation, so the refusal above was about identity'
 );
 
 select throws_ok(
