@@ -409,11 +409,23 @@ $$ select pg_temp.as_user('11111111-1111-4111-8111-111111111111',
 'a missing figure is rejected rather than stored as null'
 );
 
--- 🍏 FIXED VERSION: Bypasses the restricted private schema by using standard SQL math allowed for any role
+-- Tomorrow has to be derived from the same definition of "today" the RPC uses,
+-- or this assertion is only true for part of the day. Deriving it from the
+-- session clock instead -- (now() + interval '1 day')::date -- yields the UTC
+-- date plus one, and between 16:00 and 23:59 UTC that is Manila's today rather
+-- than Manila's tomorrow. The RPC accepts it, nothing is thrown, and the suite
+-- goes red for eight hours out of every twenty-four for a reason that has
+-- nothing to do with the guard.
+--
+-- private.manila_today() is evaluated here, as postgres, and the result is
+-- interpolated as a literal. It cannot be called from inside as_user(), whose
+-- body runs as `authenticated`, which holds no execute privilege on it -- that
+-- restriction is itself asserted further up this file.
 select throws_ok(
   $$ select pg_temp.as_user('11111111-1111-4111-8111-111111111111',
-       'select (public.record_daily_sales(
-          ''55555555-5555-4555-8555-555555555555'', 5000.00, (now() + interval ''1 day'')::date)).id') $$,
+       format('select (public.record_daily_sales(
+          ''55555555-5555-4555-8555-555555555555'', 5000.00, %L)).id',
+          private.manila_today() + 1)) $$,
   '22023', 'invalid_sales_date', 'a day in the future cannot be recorded'
 );
 
@@ -439,19 +451,65 @@ jsonb_build_object('sales_date', private.manila_today()::text)
 -- business opened that day and took nothing, which is a false record rather
 -- than a correction, so the row goes (DL-041).
 
+-- The outsider has to be refused a day that genuinely exists, and the test has
+-- to hold that day's real id before it switches roles.
+--
+-- Resolving the id inside the outsider's own session, as this assertion used
+-- to, cannot do that: daily_sales_select_member hides the row, the subselect
+-- returns null, and delete_daily_sales() takes its missing-row branch. The
+-- error text is the same either way, so the assertion passed while the
+-- membership check was never asked about a real day. Under DL-026 that is not
+-- a test.
+--
+-- The three preconditions below fix what is being tested, so the same defect
+-- cannot return quietly.
+
+select isnt(
+  (select id from public.daily_sales
+    where business_id = '55555555-5555-4555-8555-555555555555'
+      and gross_amount = 9800.00),
+  null::uuid,
+  'the protected day exists, so the id used below is a real one'
+);
+
+select is(
+  (select business_id from public.daily_sales where gross_amount = 9800.00),
+  '55555555-5555-4555-8555-555555555555'::uuid,
+  'that day belongs to the business the outsider is not a member of'
+);
+
+select is(
+  pg_temp.as_user('22222222-2222-4222-8222-222222222222',
+    'select count(*)::int as n from public.daily_sales
+      where gross_amount = 9800.00'),
+  '[{"n": 0}]'::jsonb,
+  'the outsider cannot see that day, so it is an id they could not have found for themselves'
+);
+
 select throws_ok(
-$$ select pg_temp.as_user('22222222-2222-4222-8222-222222222222',
-'select (public.delete_daily_sales(
-(select id from public.daily_sales
-where business_id = ''55555555-5555-4555-8555-555555555555''
-and gross_amount = 9800.00))).id') $$,
-'42501',
-'not_a_member',
-'an outsider cannot delete another business''s day'
+  format(
+    $$ select pg_temp.as_user('22222222-2222-4222-8222-222222222222', %L) $$,
+    format('select (public.delete_daily_sales(%L)).id',
+           (select id from public.daily_sales
+             where business_id = '55555555-5555-4555-8555-555555555555'
+               and gross_amount = 9800.00))),
+  '42501',
+  'not_a_member',
+  'an outsider handed the real id of another business''s day is still refused'
+);
+
+select results_eq(
+  $$ select count(*)::int from public.daily_sales
+      where business_id = '55555555-5555-4555-8555-555555555555'
+        and gross_amount = 9800.00 $$,
+  $$ values (1) $$,
+  'the refused delete left the day in place, so the guard fired before the delete'
 );
 
 -- A row that does not exist and a row belonging to someone else answer
--- identically, so an id cannot be confirmed by probing.
+-- identically, so an id cannot be confirmed by probing. That deliberate
+-- sameness is why the assertion above must supply a real id: these two cases
+-- are indistinguishable from the outside and must be separated by the test.
 select throws_ok(
 $$ select pg_temp.as_user('11111111-1111-4111-8111-111111111111',
 'select (public.delete_daily_sales(
@@ -461,14 +519,19 @@ $$ select pg_temp.as_user('11111111-1111-4111-8111-111111111111',
 'deleting an id that does not exist reports the same error as one that is not yours'
 );
 
+-- The same id the outsider was refused, offered by the member, succeeds. That
+-- is what makes the refusal above attributable to identity rather than to
+-- anything about the argument -- and neither outcome is the 22023 an invalid
+-- argument produces, asserted further up this file. It is resolved the same
+-- way, as postgres, so both callers are demonstrably handed the same row.
 select is(
-pg_temp.as_user('11111111-1111-4111-8111-111111111111',
-'select (public.delete_daily_sales(
-(select id from public.daily_sales
-where business_id = ''55555555-5555-4555-8555-555555555555''
-and gross_amount = 9800.00))).gross_amount::text'),
-'[{"gross_amount": "9800.00"}]'::jsonb,
-'an owner can remove a day they entered wrongly'
+  pg_temp.as_user('11111111-1111-4111-8111-111111111111',
+    format('select (public.delete_daily_sales(%L)).gross_amount::text',
+           (select id from public.daily_sales
+             where business_id = '55555555-5555-4555-8555-555555555555'
+               and gross_amount = 9800.00))),
+  '[{"gross_amount": "9800.00"}]'::jsonb,
+  'an owner can remove a day they entered wrongly'
 );
 
 select results_eq(
