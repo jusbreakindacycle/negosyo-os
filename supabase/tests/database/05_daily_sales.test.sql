@@ -410,11 +410,15 @@ $$ select pg_temp.as_user('11111111-1111-4111-8111-111111111111',
 );
 
 -- 🍏 FIX APPLIED HERE: Avoid internal quote interpolation by shifting string context safely.
+-- 🍏 FIXED VERSION: Calculates tomorrow dynamically using superuser privileges before running the sandboxed user assertion
 select throws_ok(
-$$ select pg_temp.as_user('11111111-1111-4111-8111-111111111111',
-'select (public.record_daily_sales(
-''55555555-5555-4555-8555-555555555555'', 5000.00, (private.manila_today() + 1))).id') $$,
-'22023', 'invalid_sales_date', 'a day in the future cannot be recorded'
+  format(
+    $$ select pg_temp.as_user('11111111-1111-4111-8111-111111111111',
+         'select (public.record_daily_sales(
+            ''55555555-5555-4555-8555-555555555555'', 5000.00, %L::date)).id') $$,
+    (private.manila_today() + 1)::text
+  ),
+  '22023', 'invalid_sales_date', 'a day in the future cannot be recorded'
 );
 
 -- The boundary itself is allowed: today is not the future.
