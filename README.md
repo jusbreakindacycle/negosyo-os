@@ -58,11 +58,16 @@ A decision is not an implementation. A migration is not a shipped workflow. A wr
 
 ## Current repository state
 
-Public `main` was reviewed on **2026-08-03**. The latest listed milestone commit is `6321534`, titled “Milestone 2 — Stocks: tracked items, daily sales, and the buying assistant.” The title is broader than the delivered user capability.
+Public `main` was reviewed on **2026-08-04**. The reviewed baseline was commit `7b59a18`, the tip of `main` before this documentation update; the documentation commit that follows this review will sit on top of it, so `7b59a18` is not necessarily the newest commit by the time you read this.
+
+An earlier milestone commit, `6321534`, is titled “Milestone 2 — Stocks: tracked items, daily sales, and the buying assistant.” That title is broader than the delivered user capability (DL-050). Commit history is not rewritten, so the title stands as written and the correction lives in the decision log.
 
 | Area | Current evidence status |
 | --- | --- |
 | Next.js application scaffold | `VERIFIED` by prior audit checks |
+| Database verification in CI | `VERIFIED` — seven migrations from zero, 239 assertions across five suites passing, and a deliberate tenant-isolation regression observed turning the job red (DL-053) |
+| Repository-owned hosted structural parity | `VERIFIED` through the 2026-08-04 read-only catalogue audit (DL-054). This covers what the repository owns, not every platform-managed respect of the hosted project |
+| Hosted runtime RLS behaviour | `IMPLEMENTED_UNVERIFIED` — no pgTAP suite has been run against the hosted project, and no hosted policy has been exercised at runtime |
 | Authentication and business tenancy foundation | `VERIFIED`; the isolation suites now run in CI on every push and pull request (DL-053) |
 | Business lifecycle fields | `VERIFIED` at the database level — columns, enum, and default are asserted in CI; no lifecycle workflow exists in the interface |
 | Tracked priority items database | `VERIFIED` at the database level — schema, isolation, and RPC behaviour assert in CI |
@@ -80,8 +85,13 @@ Public `main` was reviewed on **2026-08-03**. The latest listed milestone commit
 ## Immediate build priority
 
 1. ~~Make the database test suites run in CI and prove they fail when isolation is deliberately broken.~~ Done on 2026-08-04: 239 assertions across five suites, seven migrations applied from zero, and a deliberate tenant-isolation regression observed turning CI red on exactly the predicted assertions (DL-053).
-2. Correct UI and documentation claims that imply features already exist.
-3. Build one end-to-end Stocks action slice on a real 360px Android viewport:
+2. ~~Correct the documentation claims that imply features already exist.~~ Finalised by this documentation change: README, `CLAUDE.md`, the build plan, the technical foundation, and the decision log now carry the same evidence labels.
+3. Replace the internal codenames that still render in the authenticated dashboard with the user-facing product-area names. This is the one remaining Phase gate A item and it is still open.
+4. Close the three remaining Phase gate B application items. All three are `DOCUMENTED_ONLY` — decided and designed in DL-055, with no code implementing any of them:
+   - replace `next/font/google` with a system-font stack, removing the build-time font download;
+   - add an explicit OTP runtime allow-list before `verifyOtp`, derived only from the authentication flows this product supports and from the `token_hash` and `type` contract of the `/auth/confirm` route;
+   - enforce, server-side, a ceiling of at most three businesses whose status is not `closed` per authenticated owner, as an abuse control rather than pricing or packaging.
+5. Only then build one end-to-end Stocks action slice on a real 360px Android viewport. Milestone 2C does not begin until the three Phase gate B items in step 4 are implemented and verified:
    - configure a small priority-item list;
    - record a count;
    - identify a low or uncertain item;
@@ -89,7 +99,7 @@ Public `main` was reviewed on **2026-08-03**. The latest listed milestone commit
    - show the reason and missing information;
    - let the owner confirm, change, or dismiss the action;
    - record the outcome.
-4. Test the workflow with a real operator before expanding to Permits, Taxes, broad AI, or additional verticals.
+6. Test the workflow with a real operator before expanding to Permits, Taxes, broad AI, or additional verticals.
 
 Daily gross sales may support tax estimates and some demand models, but it is **not the universal prerequisite for every Stocks or dashboard action**.
 

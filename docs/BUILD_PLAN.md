@@ -12,7 +12,7 @@
 
 6. AI may explain, summarise, prioritise, and draft. Deterministic rules, source-backed facts, permissions, and owner confirmation control high-impact outcomes.
 7. No legal or tax rule is “verified” without a primary source, effective date, applicability conditions, and last-reviewed date.
-8. No more production SQL is added while the existing database suites cannot run in CI, except work strictly required to establish that CI gate.
+8. The database suites now run in CI (DL-053), so the SQL freeze that rule imposed no longer applies for that reason. Phase gate B still governs what may be built next.
 
 ## Status legend
 
@@ -26,16 +26,16 @@
 
 ## Phase gate A — Documentation and claim repair
 
-**Status: completed by this documentation revision; repository application still needs matching changes.**
+**Status: open.** Documentation and claim alignment is complete. The public UI label replacement is not. Phase gate A as a whole stays open until the internal codenames no longer render publicly — the authenticated dashboard still shows `Start & Comply` and `Operate & Decide`.
 
 - [x] Replace the exact-peso-loss validation rule with incident-and-behaviour validation.
 - [x] Replace the universal daily-sales spine with an evidence spine.
 - [x] Define the shared action model and AI-assisted dashboard.
 - [x] Add evidence-status and anti-hallucination rules.
 - [x] Add explicit current-phase exclusions.
-- [ ] Update public UI labels so internal codenames do not appear.
-- [ ] Correct commit/milestone-facing descriptions that imply the buying assistant is implemented.
-- [ ] Update `CLAUDE.md` to carry the same evidence-status and scope rules.
+- [ ] Update public UI labels so internal codenames do not appear. Still open: internal labels still render in the application.
+- [x] Correct commit/milestone-facing descriptions that imply the buying assistant is implemented — corrected through DL-050 and the current documentation. Historical commit titles remain unchanged, because commit history is not rewritten.
+- [x] Update `CLAUDE.md` to carry the same evidence-status and scope rules.
 
 **Exit condition:** A reader can distinguish current code, unverified code, approved plans, hypotheses, and exclusions without inspecting the entire history.
 
@@ -53,15 +53,17 @@ Database verification (complete — see DL-053):
 - [x] Resolve any false-positive or unreachable security assertions.
 - [x] Record the exact assertion count and environment in the decision log.
 
-Application items (still open — none of these was in scope for the database work):
+Application items (still open — none of these was in scope for the database work). Each now has an approved design in DL-055 and is `DOCUMENTED_ONLY`: decided and designed, with no code implementing it.
 
-- [ ] Add an authenticated business-creation cap or another documented abuse ceiling before public testing.
-- [ ] Validate OTP `type` through an allow-list before calling `verifyOtp`.
-- [ ] Remove build-time dependence on externally downloaded fonts or explicitly accept and test that dependency.
+- [ ] Add an authenticated business-creation cap or another documented abuse ceiling before public testing. **Approved design (DL-055):** at most three businesses whose status is not `closed` per authenticated owner, enforced server-side. This is an abuse-control rule, not pricing or subscription packaging. Status `DOCUMENTED_ONLY`.
+- [ ] Validate OTP `type` through an allow-list before calling `verifyOtp`. **Approved design (DL-055):** an explicit runtime allow-list derived only from the authentication flows NegosyoOS actually supports and from the `token_hash` and `type` contract of the `/auth/confirm` route. Status `DOCUMENTED_ONLY`.
+- [ ] Remove build-time dependence on externally downloaded fonts or explicitly accept and test that dependency. **Approved design (DL-055):** replace `next/font/google` with a system-font stack. Status `DOCUMENTED_ONLY`.
 
 **Exit condition:** Every current migration is reproducible from zero and the full database test suite passes in CI. One intentional security regression has been shown to turn CI red.
 
 **Database exit condition met on 2026-08-04.** Seven migrations applied from zero and 239 assertions across five suites passing on a disposable local stack, Supabase CLI 2.111.0, no hosted-project access ([run 30829590044](https://github.com/jusbreakindacycle/negosyo-os/actions/runs/30829590044)). A deliberate `daily_sales_select_member` regression, applied to the CI database only on a since-deleted branch, turned the job red on exactly the five predicted assertions ([run 30831767471](https://github.com/jusbreakindacycle/negosyo-os/actions/runs/30831767471)). The gate stays open until the three application items above are done.
+
+**Phase gate B remains open.** Milestone 2C does not begin until the system-font replacement, the OTP allow-list, and the three-business ceiling are implemented and verified. Phase gate A also remains open on its public UI label item, which is tracked separately above.
 
 ---
 
@@ -80,7 +82,7 @@ No rebuild is authorised unless a defect is found.
 
 ## Milestone 1 — Authentication and business tenancy
 
-**Status: core paths previously verified; regression gate incomplete until Phase gate B passes.**
+**Status: core paths previously verified; the database regression requirement is complete (DL-053).**
 
 Previously completed:
 
@@ -94,7 +96,7 @@ Standing tenancy rule:
 
 > A person reaches a business through `business_memberships` and through nothing else.
 
-**Exit condition:** Retained. Regression verification becomes complete only when the database suites run in CI.
+**Exit condition:** Retained, and its database regression requirement is met. The suites run in CI and have been observed failing when tenant isolation breaks (DL-053). This closes Milestone 1's database regression requirement only. It does not close Phase gate B, which stays open on its three application items.
 
 ## Milestone 2 — First end-to-end Stocks action slice
 
@@ -105,7 +107,7 @@ Standing tenancy rule:
 - [x] Business `legal_name` and lifecycle `status` migration exists.
 - [x] Tracked-priority-item migration exists.
 - [x] Daily-sales migration and RPCs exist.
-- [ ] Positive behavioural tests verified in CI.
+- [x] Positive behavioural tests verified in CI (DL-053).
 - [ ] User-facing Stocks route and screens.
 - [ ] Reorder or purchase recommendation.
 
@@ -124,6 +126,8 @@ The third interview is useful, but an exact peso figure is not required.
 - [ ] Run a lightweight Messenger, form, or spreadsheet habit test before adding broad automation.
 
 ### 2C. Smallest usable workflow
+
+**Not authorised yet.** Milestone 2C does not begin until the three Phase gate B application items are implemented and verified.
 
 - [ ] Onboard 8–12 priority items only.
 - [ ] Record current quantity and unit.

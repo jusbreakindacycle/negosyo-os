@@ -102,16 +102,19 @@ Legal, regulatory, tax, fee, deadline, eligibility, and market claims require so
 
 ## Current repository truth
 
-At the documentation review dated 2026-08-03:
+At the documentation review dated 2026-08-04:
 
 - M0 scaffold exists.
 - M1 authentication and tenancy foundation exists.
 - Business lifecycle, tracked-item, and daily-sales migrations exist.
-- The positive behavioural database tests for the newest slices were not established as running in CI.
+- The database suites run in CI. Seven migrations apply from zero, and five suites totalling 239 assertions pass on a disposable stack (DL-053).
+- A deliberate tenant-isolation regression was applied to the CI database only, on a since-deleted branch, and was observed turning the test job red on exactly the five predicted assertions. The gate can fail (DL-053).
+- The database-verification portion of Phase gate B is complete.
+- The hosted Supabase project structurally matches the repository for everything the repository owns, audited read-only on 2026-08-04 (DL-054). Hosted runtime RLS behaviour is `IMPLEMENTED_UNVERIFIED`; no pgTAP suite has run against the hosted project.
 - No user-facing Stocks workflow, reorder calculation, or buying assistant exists.
 - Permits, document vault, Taxes, and AI dashboard are not implemented.
 
-Milestone 2 is a partial database foundation and remains in progress.
+Milestone 2 is a partial database foundation and remains in progress. A verified database is not a shipped workflow.
 
 Do not claim otherwise unless the current tree and executed checks prove a later state.
 
@@ -119,9 +122,17 @@ Do not claim otherwise unless the current tree and executed checks prove a later
 
 Follow `docs/BUILD_PLAN.md`.
 
-The next engineering gate is database verification in CI. Do not add more feature SQL until the existing migrations and pgTAP suites run repeatably, except work strictly necessary to establish that test environment.
+Database verification in CI is done, so the freeze it justified no longer applies for that reason. Phase gate B itself remains open on three application items approved in DL-055 and currently `DOCUMENTED_ONLY`:
 
-After that, build only the smallest end-to-end Stocks action slice.
+1. replacement of `next/font/google` with a system-font stack, removing the build-time font download;
+2. an explicit OTP runtime allow-list, derived only from the authentication flows this product supports and from the `token_hash` and `type` contract of the `/auth/confirm` route, applied before `verifyOtp`;
+3. a provisional ceiling of at most three businesses whose status is not `closed` per authenticated owner, as an abuse control and not as pricing or packaging.
+
+All three must be implemented and verified before Milestone 2C.
+
+Phase gate A also remains open on one item: internal codenames still render in the authenticated dashboard and must be replaced with the user-facing product-area names.
+
+Only after those gates are resolved, build the smallest end-to-end Stocks action slice. Do not start Stocks screens, reorder logic, or any other Milestone 2C work before then.
 
 ## Stocks & Operations guardrails
 
