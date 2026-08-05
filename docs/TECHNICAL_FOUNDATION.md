@@ -29,7 +29,7 @@
 
 ## 2. Current implementation truth
 
-As of the public repository review on 2026-08-03:
+As of the public repository review on 2026-08-04:
 
 | Capability | Status |
 | --- | --- |
@@ -40,10 +40,14 @@ As of the public repository review on 2026-08-03:
 | Business lifecycle fields | Migration exists; columns, enum, and default asserted in CI |
 | Tracked items | Migration exists; schema, isolation, and RPC behaviour asserted in CI |
 | Daily sales | Migration and RPCs exist; positive and negative paths asserted in CI |
+| Repository-owned hosted structural parity | `VERIFIED` through the 2026-08-04 read-only catalogue audit (DL-054), covering migration history, tables, columns, constraints, indexes, enums, functions and their bodies, policies, repository-owned grants, and triggers |
+| Hosted runtime RLS behaviour | `IMPLEMENTED_UNVERIFIED` — no pgTAP suite has been run against the hosted project |
 | Stocks user interface | Not implemented |
 | Reorder calculation | Not implemented |
 | Action dashboard | Not implemented |
 | Permits, documents, taxes, AI integration | Not implemented |
+
+Structural parity is a claim about what the repository owns. It is not a claim that the hosted project is identical in every platform-managed respect, and it is not behavioural evidence: a matching policy definition is not an executed policy.
 
 Do not derive repository status from commit titles alone. The source tree, migrations, routes, executed tests, and observed runtime are the evidence.
 
@@ -338,7 +342,7 @@ Paid or lifecycle restrictions that matter must be enforced server-side, not onl
 
 Before public testing:
 
-- cap business creation per account or document a different ceiling;
+- cap business creation per account. The approved ceiling is at most **three businesses whose status is not `closed` per authenticated owner**, enforced server-side (DL-055). This is an abuse-control rule, not pricing, packaging, or a subscription tier, and it must not be presented to an owner as one. It is not yet implemented;
 - limit expensive or high-growth RPCs;
 - monitor audit-table growth;
 - rate-limit authentication and AI endpoints where platform controls are insufficient;
@@ -387,7 +391,7 @@ Use shared schema validation for every external input.
 
 - Client validation improves usability.
 - Server/RPC validation is authoritative.
-- Query parameters entering security-sensitive calls use allow-lists.
+- Query parameters entering security-sensitive calls use allow-lists. The `type` parameter reaching `verifyOtp` in the confirmation-link route does not yet do so; the approved allow-list is `DOCUMENTED_ONLY` (DL-055).
 - Monetary and date inputs include locale-safe parsing and adversarial tests.
 - Confirmation is required for overwrites and anomalous high-impact values.
 - Accessibility includes label association, focus management, errors, keyboard flow, and screen-reader testing.

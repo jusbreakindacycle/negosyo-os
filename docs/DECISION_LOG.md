@@ -857,3 +857,98 @@ No policy, grant, function, or migration was weakened to make anything pass.
 - **Nothing ran against the hosted Supabase project.** Every result above comes from a disposable local stack on a CI runner.
 - Docker is still absent from the founder's machine (DL-026), so the suites still cannot be executed locally. CI remains the only place they run.
 - A verified database is not a user-facing workflow. Milestone 2 remains a database foundation with no Stocks screens (DL-050).
+
+---
+
+## DL-054 — The hosted project structurally matches the repository for everything the repository owns
+
+**Date:** 2026-08-04
+**Status:** Approved engineering result
+
+A read-only catalogue audit compared the hosted Supabase project `vbmfkfkfpvgezgyahdpb` against the repository baseline `7b59a18` on `main`, with a clean working tree matching `origin/main`.
+
+### What matched
+
+| Compared | Result |
+|---|---|
+| Migration history | Seven repository migrations, seven hosted migration-history entries, same versions and same names |
+| Tables | The six repository-owned tables, with RLS enabled on each |
+| Columns, constraints, indexes, enums | Structurally matching |
+| Functions | The nine repository-owned functions present with matching signatures |
+| Function bodies | All nine matched during the audit |
+| Policies | Structurally matching |
+| Grants | Repository-owned grants only: the `anon` and `authenticated` grant state on repository-owned objects matches what the migrations declare. Hosted `service_role` ACLs are outside this comparison and are recorded separately in DL-055 |
+| Triggers | Structurally matching |
+| Generated TypeScript types | No schema-derived drift observed during this audit. The committed types were compared against the hosted catalogue; they were not regenerated |
+
+The nine repository-owned functions are `private.handle_new_user`, `private.is_business_member`, `private.manila_today`, `private.set_updated_at`, `public.create_business_with_owner`, `public.create_tracked_item`, `public.delete_daily_sales`, `public.record_daily_sales`, and `public.update_tracked_item`.
+
+As of this 2026-08-04 audit, no migration was required and no type regeneration was required. Nothing was regenerated during the audit or during the documentation work that records it, and no change after 2026-08-04 has been checked.
+
+### How the audit was performed
+
+Read-only, through the configured read-only Supabase MCP. No hosted write, no DDL, no DML, no migration application, and no type generation occurred.
+
+### Evidence labels
+
+```text
+Repository-owned hosted structural parity: VERIFIED through the 2026-08-04 read-only catalogue audit.
+Hosted runtime RLS behavior: IMPLEMENTED_UNVERIFIED.
+```
+
+### What this does not establish
+
+- This is not a claim that the hosted project is identical to the repository in every platform-managed respect. The audit compared what the repository owns. Platform-managed schemas, extensions, roles, and mechanisms outside the repository migrations were not asserted to match, and at least one hosted-only object exists (DL-055).
+- The parity claim about grants covers repository-owned grants only. The hosted `service_role` ACLs and the hosted-only RLS-auto-enable objects are excluded from it, and both are recorded as `RESEARCH_REQUIRED` in DL-055.
+- No repository pgTAP suite was run against the hosted project. The 239 assertions of DL-053 ran on a disposable local stack in CI, and nothing in this audit executed a policy at runtime.
+- Structural parity is not behavioural parity. Hosted runtime RLS behaviour remains `IMPLEMENTED_UNVERIFIED`.
+
+---
+
+## DL-055 — Phase gate B implementation and governance decisions
+
+**Date:** 2026-08-04
+**Status:** Approved founder decision
+
+Seven decisions follow from the 2026-08-04 hosted audit (DL-054) and the completed database verification (DL-053).
+
+### Governance of the two hosted findings
+
+1. Hosted `public.rls_auto_enable()` and the `ensure_rls` event trigger are left unchanged for now.
+2. The currently observed hosted `service_role` grants are left unchanged for now.
+3. Both hosted findings are recorded as `RESEARCH_REQUIRED` for long-term governance.
+
+No hosted or repository change to `rls_auto_enable`, `ensure_rls`, or `service_role` grants is currently approved.
+
+#### `rls_auto_enable` and `ensure_rls`
+
+Observed: a `ddl_command_end` event trigger named `ensure_rls`, owned by `postgres`, calling `public.rls_auto_enable()`, a `SECURITY DEFINER` function with `search_path=pg_catalog`.
+
+> The hosted security advisor reports that API roles retain function-execution privilege. Actual invocation through the Data API was not tested and remains unverified.
+
+The mechanism is:
+
+- hosted-only;
+- consistent with a Supabase-documented RLS-auto-enable mechanism;
+- absent from the repository migrations and from local CI, where a grep of the tree returns no occurrence of either name;
+- of provenance not established — whether it was created by the platform, by a dashboard action, or by an earlier manual statement was not determined by this audit;
+- unchanged pending governance research.
+
+No claim is made here about how a future platform action would treat it. In particular, this decision does not assert that a migration would necessarily be removed by a future platform reset.
+
+#### `service_role` grants
+
+The repository migrations neither grant nor revoke anything to `service_role`. The hosted grants observed on the repository-owned tables are therefore outside repository-owned grants and outside what DL-054 asserts as matching. They stay as observed until the governance research is done.
+
+### Three implementation decisions, not yet implemented
+
+4. `next/font/google` is replaced with a system-font stack in a later implementation task, removing the build-time dependence on an externally downloaded font.
+5. An explicit OTP runtime allow-list is added in a later implementation task, derived only from the authentication flows NegosyoOS actually supports and from the `token_hash` and `type` contract of the `/auth/confirm` route, and applied before `verifyOtp` is called.
+6. A provisional ceiling of at most **three businesses whose status is not `closed` per authenticated owner** is enforced in a later implementation task.
+7. The three-business ceiling is an abuse-control rule. It is not pricing, not packaging, and not a subscription tier, and it must not be presented to an owner as one.
+
+### Status
+
+The OTP allow-list, the font replacement, and the business ceiling are `DOCUMENTED_ONLY`. They are decided and designed; no code implements them.
+
+Phase gate B remains open until all three are implemented and verified. The database-verification portion of the gate closed on 2026-08-04 (DL-053); the gate as a whole did not.
