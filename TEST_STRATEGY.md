@@ -10,24 +10,25 @@ nothing ran, the evidence table below says so explicitly.
 
 | Layer | Tool | What it covers | Status this migration |
 | --- | --- | --- | --- |
-| Unit | Vitest | Validation (`src/lib/validation/`), audit metadata allow-list, `resolveActiveBusinessId`, Supabase env parsing, the OTP type allow-list | `VERIFIED` after `npm test` runs green (M0.6) |
+| Unit | Vitest | Validation (`src/lib/validation/`), audit metadata allow-list, `resolveActiveBusinessId`, Supabase env parsing, the OTP type allow-list | `VERIFIED` — `npm test`: 30/30 pass across 5 suites, 2026-08-09 |
+| Static build pipeline | `tsc`, ESLint, `expo config`, `expo export` | Types, lint rules (incl. React Hooks correctness), config validity, full Metro bundle | `VERIFIED` — all four pass locally; `expo export --platform android` bundled 1382 modules into a working Hermes bundle |
 | Component | *(none yet)* | Screen rendering, form interaction | `PLANNED` — `jest-expo` + `@testing-library/react-native`, deliberately not added this slice; no component exists yet to justify the dependency |
-| Integration | Manual, device | Auth flow end-to-end, business create/list/switch against the real hosted Supabase project | `IMPLEMENTED_UNVERIFIED` until device-run in M0.6, then `DEVICE VERIFIED` for whatever actually ran |
+| Integration | Manual, device | Auth flow end-to-end, business create/list/switch against the real hosted Supabase project | `NOT EXECUTED` — requires `npx expo start` + Expo Go on a physical device; attempted once in this session but the dev server's interactive output could not be captured non-interactively, so it must be run directly by whoever has the device |
 | PostgreSQL / pgTAP | Supabase CLI + pgTAP, in CI | Schema, RLS isolation, RPC behaviour, audit-audience parity | `CI VERIFIED`, unchanged by this migration (DL-053) |
 | RLS isolation (negative case) | pgTAP, in CI | A deliberately broken policy turns CI red | `CI VERIFIED` (DL-053); not re-run this migration since no schema changed |
-| Auth | Manual, device | Sign up, verify, sign in, sign out, session restore after relaunch | Evidence recorded per-item in `PROJECT_STATE.md` after M0.6 |
+| Auth | Manual, device | Sign up, verify, sign in, sign out, session restore after relaunch | `NOT EXECUTED` — see the device checklist in the final reconciliation report |
 | Deep links | — | Not applicable this slice — the typed-code flow needs none | `OUT_OF_SCOPE` |
-| Onboarding | Manual, device | First business creation, empty-state routing | Recorded after M0.6 |
-| Business switching | Manual, device + existing unit test | Switch updates the active business; a foreign id in storage returns nothing | Unit: `VERIFIED`. Device negative test: recorded after M0.6 |
-| Mobile routing | Manual, device | Unauthenticated → `(auth)`, authenticated → `(app)`, redirect-preserving-session behaviour | Recorded after M0.6 |
-| Low-width devices | Manual, device (360px-equivalent) | Layout does not break on a small Android screen | Recorded after M0.6, on whatever device is used |
+| Onboarding | Manual, device | First business creation, empty-state routing | `NOT EXECUTED` |
+| Business switching | Manual, device + existing unit test | Switch updates the active business; a foreign id in storage returns nothing | Unit: `VERIFIED`. Device negative test: `NOT EXECUTED` |
+| Mobile routing | Manual, device | Unauthenticated → `(auth)`, authenticated → `(app)`, redirect-preserving-session behaviour | `NOT EXECUTED` |
+| Low-width devices | Manual, device (360px-equivalent) | Layout does not break on a small Android screen | `NOT EXECUTED` |
 | Low-end Android | — | Performance on a genuinely low-end device | `NOT EXECUTED` — no such device available this session |
 | Poor connectivity | — | Auth/RPC failure and retry behaviour under a flaky network | `PLANNED` — no explicit handling built this slice beyond Supabase SDK defaults |
 | Accessibility | — | Screen reader, focus order, touch target size | `PLANNED` — not evaluated this migration |
 | Offline behaviour | — | Reads/writes while disconnected | `OUT_OF_SCOPE` — explicitly deferred repository-wide per `docs/BUILD_PLAN.md` |
-| CI | GitHub Actions | Lint, typecheck, unit tests, `expo config`, `expo export`; separately, the unchanged database job | Recorded after M0.5 runs |
-| Emulator | — | Android Studio AVD | `NOT EXECUTED` this session — physical device used instead, which is the stronger evidence class, not a lesser substitute |
-| Physical device | Expo Go on a physical Android phone | Everything under "Auth" through "Low-width devices" above | The authoritative evidence source for this migration; iOS not available and recorded as `NOT EXECUTED` |
+| CI | GitHub Actions | Lint, typecheck, unit tests, `expo config`, `expo export`; separately, the unchanged database job | `IMPLEMENTED_UNVERIFIED` — workflow updated and the same steps pass locally; not yet run on GitHub Actions because this branch has not been pushed |
+| Emulator | — | Android Studio AVD | `NOT EXECUTED` this session |
+| Physical device | Expo Go on a physical Android phone | Everything under "Auth" through "Low-width devices" above | `NOT EXECUTED` this session — see the final report for exactly why and what to run |
 
 ## What "done" means for this migration specifically
 

@@ -85,15 +85,21 @@ Previously completed, web architecture (retired 2026-08-09):
 
 ## Milestone 0M — Native mobile application scaffold
 
-**Status: see `PROJECT_STATE.md`.**
+**Status: code complete and locally verified; device walkthrough not yet executed. See
+`PROJECT_STATE.md` for the full evidence matrix.**
 
 Replaces Milestone 0's client. Backend (Supabase project, migrations, RLS) is unchanged and not
 re-verified by this milestone — see Milestone 1.
 
-- [ ] Expo, Expo Router, TypeScript, ESLint (`eslint-config-expo`), lockfile.
-- [ ] Native Supabase client with session persistence and typed email-OTP authentication.
-- [ ] CI for application lint, type check, unit tests, `expo config`, `expo export`.
-- [ ] App launches on a physical Android device via Expo Go.
+- [x] Expo SDK 57, Expo Router, TypeScript, ESLint (`eslint-config-expo`), lockfile. Versions from
+      a real `npx expo install` resolution, not hand-picked.
+- [x] Native Supabase client with session persistence and typed email-OTP authentication (code
+      complete; `verifyOtp`/`resend` contract checked against installed `@supabase/auth-js`
+      2.111.0 and current docs — DL-058).
+- [x] CI for application lint, type check, unit tests, `expo config`, `expo export`. All four pass
+      locally; not yet run on GitHub Actions (branch not pushed).
+- [ ] App launches on a physical Android device via Expo Go. **Not yet executed** — requires a
+      human running `npx expo start` in a terminal they can watch, phone in hand.
 
 No rebuild is authorised unless a defect is found.
 
