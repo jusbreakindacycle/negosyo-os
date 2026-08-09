@@ -1,9 +1,11 @@
 /**
  * Pure resolution of "which business is the person looking at".
  *
- * Kept free of any Next.js or Supabase import so it can be reasoned about and
- * tested on its own — this is the function that decides whether a cookie is
- * believed.
+ * Kept free of any Expo, React Native, or Supabase import so it can be
+ * reasoned about and tested on its own — this is the function that decides
+ * whether a locally stored business id is believed. Ported unchanged from the
+ * web client; only the storage mechanism behind the caller changed, from a
+ * browser cookie to on-device storage.
  */
 
 export type BusinessSummary = {
@@ -12,25 +14,25 @@ export type BusinessSummary = {
 };
 
 /**
- * Picks the active business from an attacker-controlled cookie.
+ * Picks the active business from an attacker-controlled stored preference.
  *
- * The cookie value is only ever a hint. It is honoured when, and only when, it
- * names a business the caller actually holds a membership for; otherwise the
- * first authorised business wins. Row Level Security would already return
- * nothing for an unauthorised id, so this is the second of two locks, not the
- * only one — but it is what stops the interface from claiming to display a
- * business that the person cannot see.
+ * The stored value is only ever a hint. It is honoured when, and only when,
+ * it names a business the caller actually holds a membership for; otherwise
+ * the first authorised business wins. Row Level Security would already
+ * return nothing for an unauthorised id, so this is the second of two locks,
+ * not the only one — but it is what stops the interface from claiming to
+ * display a business that the person cannot see.
  */
 export function resolveActiveBusinessId(
-  cookieValue: string | null | undefined,
+  storedValue: string | null | undefined,
   businesses: readonly BusinessSummary[],
 ): string | null {
   if (businesses.length === 0) {
     return null;
   }
 
-  if (cookieValue && businesses.some((b) => b.id === cookieValue)) {
-    return cookieValue;
+  if (storedValue && businesses.some((b) => b.id === storedValue)) {
+    return storedValue;
   }
 
   return businesses[0].id;
@@ -38,10 +40,10 @@ export function resolveActiveBusinessId(
 
 /** The resolved business itself, or null when the person has none yet. */
 export function resolveActiveBusiness(
-  cookieValue: string | null | undefined,
+  storedValue: string | null | undefined,
   businesses: readonly BusinessSummary[],
 ): BusinessSummary | null {
-  const id = resolveActiveBusinessId(cookieValue, businesses);
+  const id = resolveActiveBusinessId(storedValue, businesses);
   if (id === null) {
     return null;
   }

@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
-const URL_VAR = "NEXT_PUBLIC_SUPABASE_URL";
-const KEY_VAR = "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY";
+const URL_VAR = "EXPO_PUBLIC_SUPABASE_URL";
+const KEY_VAR = "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY";
 
 describe("getSupabaseEnv", () => {
   let original: Record<string, string | undefined>;
