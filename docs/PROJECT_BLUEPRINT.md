@@ -1,14 +1,19 @@
 # NegosyoOS PH Project Blueprint
 
-**Version 3.0 — supersedes Project Blueprint v2.0 for current product direction. Historical decisions remain in `DECISION_LOG.md`.**
+**Version 3.1 — supersedes Project Blueprint v2.0/v3.0's delivery model only, per DL-056. Historical decisions remain in `DECISION_LOG.md`.**
+
+**Mobile-only since 2026-08-09.** NegosyoOS PH is delivered as a native mobile application
+(React Native, Expo, Expo Router) — see [DL-056](DECISION_LOG.md#dl-056). Every other decision
+in this document (product thesis, the three product areas, reference cases, validation framework)
+is unaffected.
 
 | Field | Current state |
 | --- | --- |
 | Product name | NegosyoOS PH — temporary working name |
 | Product type | Commercial hypothesis; not yet commercially validated |
 | Phase | Phase 1A — Foundation and first validated workflow |
-| Product structure | One application, three user-facing product areas, one shared action model |
-| Current code | Authentication/tenancy foundation plus partial Stocks database work |
+| Product structure | One native mobile application, three user-facing product areas, one shared action model |
+| Current code | Mobile foundation reconciliation in progress; Supabase/PostgreSQL tenancy foundation and partial Stocks database work carried over unchanged — see `PROJECT_STATE.md` |
 | First operational reference | DUO BREW coffee-shop purchasing and availability problems |
 | First job-centred reference | B2B air-conditioning services; not yet interviewed |
 | AI | Assisted self-service; visible summaries and guided help are allowed |
@@ -415,7 +420,7 @@ Rules:
 - autonomous agents;
 - unrestricted general chatbot;
 - complex offline writes;
-- final native app;
+- final, store-ready, production-hardened native app (the client itself is native from the start per DL-056; what is out of scope here is production polish — offline sync, app-store release hardening — not the native architecture);
 - subscription billing and final price;
 - production launch.
 

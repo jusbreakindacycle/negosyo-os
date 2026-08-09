@@ -1,16 +1,43 @@
 # Claude Code Instructions
 
+## Delivery model
+
+**NegosyoOS PH is a native mobile application only** — React Native, Expo, Expo Router,
+TypeScript, against a Supabase/PostgreSQL backend. It is not a web application, not a
+web-plus-mobile platform, not PWA-first, and not a future-native wrapper around a website
+(DL-056). Do not reintroduce Next.js, `@supabase/ssr`, browser cookies, or any web-only package
+without a new approved decision.
+
 ## Read first
 
 Before planning, editing, or generating migrations, read in this order:
 
 1. `README.md`
-2. `docs/PROJECT_BLUEPRINT.md`
-3. `docs/TECHNICAL_FOUNDATION.md`
-4. `docs/BUILD_PLAN.md`
-5. `docs/DECISION_LOG.md`
+2. `PROJECT_STATE.md`
+3. `docs/PROJECT_BLUEPRINT.md`
+4. `docs/TECHNICAL_FOUNDATION.md`
+5. `docs/BUILD_PLAN.md`
+6. `docs/DECISION_LOG.md`
+7. `docs/DEVELOPMENT_WORKFLOW.md`
 
 Then inspect the current repository tree, routes, migrations, tests, and Git status. Do not infer implementation from milestone names or documentation.
+
+## Branch safety
+
+1. Inspect `git status`, current branch, local HEAD, and remote relationship before implementation.
+2. Do not begin normal feature work directly on `main`.
+3. Do not begin normal isolated feature work directly on `develop`.
+4. Determine the intended capability/issue before implementation.
+5. Use one appropriately named short-lived branch (`feature/*`, `fix/*`, `hotfix/*`, `refactor/*`, `test/*`, `docs/*`, `chore/*`, `spike/*`, `migration/*` — see `docs/DEVELOPMENT_WORKFLOW.md`).
+6. Do not combine unrelated capabilities in one branch.
+7. Do not merge, push, delete branches, force-update refs, or alter `main` automatically unless explicitly authorized.
+8. Leave a branch buildable and testable whenever reasonably possible.
+9. Database schema changes require new additive migrations.
+10. Never edit already-applied migrations merely to simplify a feature.
+11. Report branch name, changed files, tests, database impact, and intended PR target at completion.
+12. If the current branch does not match the requested scope, stop implementation and reconcile branch context first.
+
+A request such as "add this small feature" is not permission to modify unrelated modules.
 
 ## Repository authority
 
@@ -21,10 +48,12 @@ Legacy repositories, old chat context, branches not present locally, and remembe
 Where documents conflict:
 
 1. the latest approved entry in `DECISION_LOG.md` governs the decision;
-2. `PROJECT_BLUEPRINT.md` governs current product direction;
-3. `TECHNICAL_FOUNDATION.md` governs implementation boundaries;
-4. `BUILD_PLAN.md` governs authorised sequence;
-5. the current code and executed tests govern what is actually implemented and verified.
+2. `PROJECT_STATE.md` governs what is currently true;
+3. `PROJECT_BLUEPRINT.md` governs current product direction;
+4. `TECHNICAL_FOUNDATION.md` governs implementation boundaries;
+5. `BUILD_PLAN.md` governs authorised sequence;
+6. `docs/DEVELOPMENT_WORKFLOW.md` governs Git branching and process;
+7. the current code and executed tests govern what is actually implemented and verified.
 
 Do not rewrite decision history. Append a new decision when direction changes.
 
@@ -102,15 +131,17 @@ Legal, regulatory, tax, fee, deadline, eligibility, and market claims require so
 
 ## Current repository truth
 
-At the documentation review dated 2026-08-04:
+**See `PROJECT_STATE.md` for the live evidence matrix.** Summary at the mobile-foundation
+reconciliation dated 2026-08-09:
 
-- M0 scaffold exists.
-- M1 authentication and tenancy foundation exists.
-- Business lifecycle, tracked-item, and daily-sales migrations exist.
+- The client is being rebuilt as a native Expo/Expo Router application; the Next.js scaffold is
+  retired (DL-056). See `PROJECT_STATE.md` for exactly what has been verified so far.
+- M1 authentication and tenancy foundation exists at the database layer.
+- Business lifecycle, tracked-item, and daily-sales migrations exist, unchanged.
 - The database suites run in CI. Seven migrations apply from zero, and five suites totalling 239 assertions pass on a disposable stack (DL-053).
 - A deliberate tenant-isolation regression was applied to the CI database only, on a since-deleted branch, and was observed turning the test job red on exactly the five predicted assertions. The gate can fail (DL-053).
 - The database-verification portion of Phase gate B is complete.
-- The hosted Supabase project structurally matches the repository for everything the repository owns, audited read-only on 2026-08-04 (DL-054). Hosted runtime RLS behaviour is `IMPLEMENTED_UNVERIFIED`; no pgTAP suite has run against the hosted project.
+- The hosted Supabase project structurally matches the repository for everything the repository owns, audited read-only on 2026-08-04 (DL-054, re-confirmed 2026-08-09). Hosted runtime RLS behaviour is `IMPLEMENTED_UNVERIFIED`; no pgTAP suite has run against the hosted project.
 - No user-facing Stocks workflow, reorder calculation, or buying assistant exists.
 - Permits, document vault, Taxes, and AI dashboard are not implemented.
 
@@ -120,17 +151,16 @@ Do not claim otherwise unless the current tree and executed checks prove a later
 
 ## Current authorised work
 
-Follow `docs/BUILD_PLAN.md`.
+Follow `docs/BUILD_PLAN.md` and `PROJECT_STATE.md`'s single next allowed engineering task.
 
-Database verification in CI is done, so the freeze it justified no longer applies for that reason. Phase gate B itself remains open on three application items approved in DL-055 and currently `DOCUMENTED_ONLY`:
+Database verification in CI is done, so the freeze it justified no longer applies for that reason.
+Of the three DL-055 Phase gate B application items, two are resolved by the mobile pivot
+(DL-059): the font item is moot (no Next.js), and the OTP allow-list is carried into the native
+verify path (DL-058). **One remains open:**
 
-1. replacement of `next/font/google` with a system-font stack, removing the build-time font download;
-2. an explicit OTP runtime allow-list, derived only from the authentication flows this product supports and from the `token_hash` and `type` contract of the `/auth/confirm` route, applied before `verifyOtp`;
-3. a provisional ceiling of at most three businesses whose status is not `closed` per authenticated owner, as an abuse control and not as pricing or packaging.
+- a provisional ceiling of at most three businesses whose status is not `closed` per authenticated owner, as an abuse control and not as pricing or packaging. This is `PROJECT_STATE.md`'s next allowed task, `feature/business-creation-ceiling`, and it must be implemented and verified before Milestone 2C.
 
-All three must be implemented and verified before Milestone 2C.
-
-Phase gate A also remains open on one item: internal codenames still render in the authenticated dashboard and must be replaced with the user-facing product-area names.
+Phase gate A also remains open on one item: internal codenames still render in the authenticated dashboard and must be replaced with the user-facing product-area names — now in the native client.
 
 Only after those gates are resolved, build the smallest end-to-end Stocks action slice. Do not start Stocks screens, reorder logic, or any other Milestone 2C work before then.
 
@@ -222,7 +252,7 @@ Never use one `is_bmbe` boolean as the entire model.
 A person reaches a business through `business_memberships` and no other route.
 
 - No client-supplied user ID confers identity.
-- No service-role key enters the browser.
+- No service-role key, database password, or other privileged secret enters the mobile bundle. Only `EXPO_PUBLIC_*` values are read client-side, and everything `EXPO_PUBLIC_*` is considered shipped and exposed.
 - Every exposed table has RLS.
 - Important writes use authorised server paths or controlled RPCs.
 - `SECURITY DEFINER` functions use an empty `search_path`.
@@ -260,7 +290,7 @@ Do not implement unless a new approved decision explicitly changes scope:
 - autonomous AI agents;
 - unrestricted general chatbot;
 - complex offline writes;
-- final native application;
+- final, store-ready, production-hardened native application (the client is native from the start per DL-056; out of scope here is production/store-release polish, not the native architecture itself);
 - subscription billing;
 - production launch.
 
