@@ -159,6 +159,50 @@ npx expo start
 
 Then open the app in Expo Go on a physical Android device, or an emulator if one is configured.
 
+### Running on a physical device
+
+Three environment conditions must hold. Each one fails with the same misleading Expo Go
+message, `java.io.IOException: Failed to download remote update`, so check all three
+before suspecting application code.
+
+1. **Expo Go must match the SDK.** SDK 57 requires Expo Go Android client **57.0.3**. An
+   older client fetches the manifest, rejects the `exposdk:57.0.0` runtime version, and
+   never requests a bundle — so the dev server logs nothing at all. Confirm the installed
+   client under Expo Go → Settings.
+
+   **The Google Play listing is not the current client.** As of 2026-08-12 Play serves
+   Expo Go 54.0.8 (published 2026-05-12) and offers no update, which cannot run an SDK 57
+   project. Current Android clients are published as APKs to
+   `https://github.com/expo/expo-go-releases/releases`. Resolve the exact client version
+   and download URL for any SDK from `https://api.expo.dev/v2/versions/latest`, fields
+   `sdkVersions["57.0.0"].androidClientVersion` and `.androidClientUrl`.
+
+   A development build avoids this coupling entirely, because it is compiled against the
+   project's own SDK rather than depending on whichever client Expo has published.
+
+2. **Never hardcode `sdkVersion` in `app.json`.** Expo infers it from the installed `expo`
+   package. A stale pin silently makes the served manifest advertise the wrong runtime.
+   Verify with `npx expo config --type public`.
+
+3. **The device must reach Metro.** Test from the phone's browser at
+   `http://<pc-lan-ip>:8081`. If that is unreachable while the phone and PC share a
+   subnet, the cause is router client/AP isolation or a VPN on the phone, not the firewall.
+   Use the tunnel, which bypasses the LAN entirely:
+
+   ```bash
+   npx expo start --tunnel
+   ```
+
+A cold Metro bundle takes roughly four minutes on a low-power laptop, against about twelve
+seconds warm, which is slow enough to time out the device's download. Warm the cache from
+the PC before scanning the QR code, and reserve `--clear` for genuine stale-cache
+debugging rather than routine starts:
+
+```bash
+curl -s -o /dev/null -w "%{http_code} %{size_download}\n" \
+  "http://127.0.0.1:8081/node_modules/expo-router/entry.bundle?platform=android&dev=true&transform.engine=hermes&transform.bytecode=1&transform.routerRoot=app"
+```
+
 Application checks:
 
 ```bash
