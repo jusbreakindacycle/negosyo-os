@@ -1042,3 +1042,49 @@ DL-055 left three Phase gate B application items `DOCUMENTED_ONLY`. The mobile p
 3. **Three-business ceiling** — **unchanged and still `DOCUMENTED_ONLY`.** This decision does not implement it. It becomes `PROJECT_STATE.md`'s single next allowed engineering task, `feature/business-creation-ceiling`, to be built as its own short-lived branch with an additive migration and pgTAP coverage, before any Stocks work begins.
 
 Phase gate B is therefore not fully closed by the mobile-foundation migration: two of its three items are resolved or in progress, and the ceiling remains open on its own branch.
+
+---
+
+## DL-060 — Business onboarding is realigned to the lifecycle, and graduation becomes owner-declared until Permits exists
+
+**Date:** 2026-08-13
+**Status:** Approved founder decision
+
+### What prompted it
+
+An audit of the merged mobile client against the controlling documents found that the interface never caught up to the lifecycle the database already models:
+
+- `create_business_with_owner` accepts only a name and does not set `status`, so every business created through the application takes the column default `operating`. Confirmed on the hosted project the same day: the single existing business row has status `operating`. Nobody chose that, and nobody was asked.
+- `listMyBusinesses` selects `id, name`. `status` never reaches the client, so no mode could be derived even if it were set correctly.
+- No Setup-mode or Running-mode branching exists anywhere in `app/`.
+- No business-context column exists — nature of business, operating model, customer model, existing systems are all absent, as `20260731125356` deliberately left them.
+
+This is the gap DL-031 described in 2026-08-02 and nothing has closed since. A lifecycle that only the database knows about is not a lifecycle.
+
+### The four decisions
+
+**1. Sequencing is unchanged, then extended.** `feature/business-creation-ceiling` still comes first, exactly as `PROJECT_STATE.md` and DL-059 item 3 require; it closes the last open Phase gate B application item and needed no new decision. `feature/business-onboarding-lifecycle` follows it. This **pulls Setup mode forward** out of Milestone 4, where `docs/BUILD_PLAN.md` had placed it alongside the Permits slice. Milestone 2C Stocks work is still not authorised, and this decision does not authorise it.
+
+**2. Branches are cut from `main`'s current tip.** `migration/mobile-foundation` is merged (PR #14, `8bdbbd2`), so no further work happens on it, and nothing is branched from the pre-merge state. `origin/develop` remains stale at the pre-Milestone-1 scaffold and is not used as a base until it is reconciled.
+
+**3. Lifecycle and registration are separate dimensions.** `businesses.status` continues to carry where the business is in its own life — `draft | registering | operating | closed` — and a **separate** registration-status fact records how far formal registration has got.
+
+One column cannot carry both. Two of the four owner-facing onboarding choices — "I'm already operating" and "I'm already operating informally" — both describe a business that is operating; what differs is whether registration is complete. Collapsing them onto one enum value would either lose the distinction or, worse, encode an unregistered business as a compliance state it has not reached. This is the same "model separately" rule `docs/PROJECT_BLUEPRINT.md` already applies to legal form, enterprise size, BMBE status, and tax treatment.
+
+Business *context* — nature of business, operating model, customer model, existing tools — is **not** built in that branch. No workflow reads it yet, and creating columns because future documentation mentions them is the premature abstraction this project avoids. It arrives with the first workflow that consumes it.
+
+**4. Graduation is owner-declared and audited, for now.** DL-031 made "the mayor's permit marked issued" the trigger that moves a business from Setup mode to Running mode. Permits does not exist and is two milestones away, so a business created as `draft` today would have no way out of Setup mode at all — the flow would be a trap.
+
+Until Permits ships, the owner may declare the transition themselves. It is written through a `SECURITY DEFINER` RPC, never a table grant, and it writes an audit event carrying `previous_status` and `next_status` — keys `src/lib/audit/events.ts` already allow-lists.
+
+**This supersedes only the trigger clause of DL-031**, and only while Permits is absent. Everything else in DL-031 stands: mode is still derived from `businesses.status` and never from a second flag, `legal_name` stays nullable and distinct from `name`, and graduation stays an earned moment rather than a settings toggle. When Permits ships, the permit-issued event becomes a trigger alongside the owner's declaration; it does not replace it, because informal operators who will never file for a mayor's permit still need to reach Running mode.
+
+An owner-declared transition is a statement about operating reality, not a compliance claim. It must never be rendered as one, and it certifies nothing.
+
+### What this does not authorise
+
+- No Stocks screen, reorder logic, or purchase list. Milestone 2C's gate is unchanged.
+- No Permits or Taxes implementation.
+- No business-type classification system, and no AI-suggested classification. Both were discussed; neither is approved here.
+- No general `UPDATE` grant on `public.businesses` to `authenticated`. The status write path is one RPC with one legal transition set, or it is nothing.
+- No change to tenancy: a person still reaches a business through `business_memberships` and nothing else.
