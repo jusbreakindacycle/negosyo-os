@@ -31,14 +31,16 @@ referenced Next.js-specific work, it is marked superseded rather than rewritten 
 
 ## Phase gate A — Documentation and claim repair
 
-**Status: open.** Documentation and claim alignment is complete. The public UI label replacement is not. Phase gate A as a whole stays open until the internal codenames no longer render publicly — the authenticated dashboard still shows `Start & Comply` and `Operate & Decide`.
+**Status: closed on 2026-08-13.** Documentation and claim alignment was already complete. The public UI label item is now satisfied too, and had been since the mobile client landed — this entry simply had not caught up.
+
+The claim it carried, that "the authenticated dashboard still shows `Start & Comply` and `Operate & Decide`", described the retired Next.js client. That client no longer exists (DL-056). Grepping `app/` and `src/` for either codename returns exactly one hit: a comment in `app/(app)/dashboard.tsx` explaining why they are absent. The three cards render `Stocks & Operations`, `Permits & Compliance`, and `Taxes & Records`.
 
 - [x] Replace the exact-peso-loss validation rule with incident-and-behaviour validation.
 - [x] Replace the universal daily-sales spine with an evidence spine.
 - [x] Define the shared action model and AI-assisted dashboard.
 - [x] Add evidence-status and anti-hallucination rules.
 - [x] Add explicit current-phase exclusions.
-- [ ] Update public UI labels so internal codenames do not appear. Still open: internal labels still render in the application.
+- [x] Update public UI labels so internal codenames do not appear. Satisfied by the native dashboard; verified by grep on 2026-08-13. `AUDIT_DOMAIN` in `src/lib/audit/events.ts` still carries `start_comply` and `operate_decide`, which is correct — those are stored domain values in `audit_events`, never rendered, and changing them would require rewriting existing audit rows.
 - [x] Correct commit/milestone-facing descriptions that imply the buying assistant is implemented — corrected through DL-050 and the current documentation. Historical commit titles remain unchanged, because commit history is not rewritten.
 - [x] Update `CLAUDE.md` to carry the same evidence-status and scope rules.
 
@@ -60,7 +62,7 @@ Database verification (complete — see DL-053):
 
 Application items — status updated 2026-08-09 by the mobile pivot (DL-059). Two of the three original DL-055 items are resolved; one remains open.
 
-- [ ] Add an authenticated business-creation cap or another documented abuse ceiling before public testing. **Approved design (DL-055):** at most three businesses whose status is not `closed` per authenticated owner, enforced server-side. This is an abuse-control rule, not pricing or subscription packaging. Status `DOCUMENTED_ONLY` — **still open**, and is `PROJECT_STATE.md`'s single next allowed engineering task (`feature/business-creation-ceiling`).
+- [ ] Add an authenticated business-creation cap or another documented abuse ceiling before public testing. **Approved design (DL-055):** at most three businesses whose status is not `closed` per authenticated owner, enforced server-side. This is an abuse-control rule, not pricing or subscription packaging. Status `IMPLEMENTED_UNVERIFIED` on `feature/business-creation-ceiling`: migration `20260813090000_limit_active_businesses_per_owner.sql` replaces the RPC body and `supabase/tests/database/06_business_creation_ceiling.test.sql` covers the allowed case, the blocked case, the per-owner scope, the freed slot after closure, and the membership-based count. **The box stays unticked until a CI run is observed green** — Docker is absent locally, so nothing has executed this SQL anywhere yet.
 - [x] Validate OTP `type` through an allow-list before calling `verifyOtp`. **Approved design (DL-055), carried into the native verify path by DL-058:** an explicit runtime allow-list (`['email']`), checked before every `verifyOtp` call in the mobile app. Status per `PROJECT_STATE.md`.
 - [x] `SUPERSEDED` (DL-059): remove build-time dependence on externally downloaded fonts. **Moot** — the client is native (DL-056); there is no Next.js, no `next/font/google`, and no build-time font download to eliminate.
 

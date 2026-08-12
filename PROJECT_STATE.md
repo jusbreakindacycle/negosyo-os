@@ -6,7 +6,7 @@ for why a decision was made see `docs/DECISION_LOG.md`; for build sequence see
 documents appear to disagree, this file's evidence table and `docs/DECISION_LOG.md`'s most recent
 entry govern, in that order — see `README.md`'s controlling-files section.
 
-Last updated: 2026-08-09, on branch `migration/mobile-foundation`.
+Last updated: 2026-08-13, on branch `feature/business-creation-ceiling`.
 
 ## Founder decision this document reflects
 
@@ -16,14 +16,22 @@ TypeScript). This supersedes the prior Next.js/responsive-web/PWA delivery decis
 
 ## Current branch / workstream
 
-`migration/mobile-foundation`, branched from `main` at `9043d50`. Not merged, not pushed. See
-`docs/DEVELOPMENT_WORKFLOW.md` for what happens to it next.
+`feature/business-creation-ceiling`, branched from `main` at `8bdbbd2`. Not merged, not pushed.
 
-## Active migration
+`migration/mobile-foundation` **is merged**: it landed on `main` as `8bdbbd2` through PR #14 on
+2026-08-12, as a squash commit whose tree is identical to the branch tip `4206af9`. The previous
+revision of this file described it as unmerged and unpushed; that is no longer true.
 
-Mobile foundation reconciliation: replace the Next.js client with an Expo Router client, keep the
-Supabase/PostgreSQL backend and every migration unchanged, restate governing documentation, and
-verify the result on a physical Android device before authorising any Stocks work.
+One inherited inaccuracy is corrected with it. `origin/develop` still points at `2d42ecc`, the
+pre-Milestone-1 scaffold, and is eleven commits behind. PRs #12, #13, and #14 all targeted `main`
+directly, so `main` — not `develop` — is where integration actually happens, whatever
+`docs/DEVELOPMENT_WORKFLOW.md` describes. Reconciling the two is not this branch's work, but the
+gap should not go unrecorded.
+
+## Active workstream
+
+Phase gate B's last open application item: a server-side ceiling of at most three businesses whose
+status is not `closed` per authenticated owner (DL-055 item 6, DL-059 item 3).
 
 ## Evidence matrix
 
@@ -37,12 +45,13 @@ verify the result on a physical Android device before authorising any Stocks wor
 | Business tenancy on mobile (create/list/switch) | `IMPLEMENTED_UNVERIFIED` | Code complete, ported from the web client's proven logic. Not yet exercised on a device |
 | Session restore after relaunch | `NOT EXECUTED` | Requires a device walkthrough: kill and relaunch the app after signing in |
 | Cross-business isolation on mobile | `VERIFIED` at the database layer (DL-053, unchanged); mobile-client negative test `NOT EXECUTED` | Requires a device walkthrough: put a foreign business id in AsyncStorage and confirm no data returns |
-| Application CI (Expo) | `IMPLEMENTED_UNVERIFIED` | `.github/workflows/ci.yml` updated (lint, typecheck, unit tests, `expo config`, `expo export`); not yet run on GitHub Actions because this branch has not been pushed |
-| Database CI (pgTAP) | unchanged, `CI VERIFIED` | Not modified by this migration |
-| Local pgTAP execution | `BLOCKED` | Docker not installed on the founder's machine (DL-026), unchanged |
-| Stocks user interface | `DOCUMENTED_ONLY` | Not started; out of scope for this migration |
+| Application CI (Expo) | `VERIFIED` | Ran on GitHub Actions for PR #14 and passed. Six checks green — `verify (22)`, `verify (24)`, and `Run pgTAP Security Tests`, across [run 31610028954](https://github.com/jusbreakindacycle/negosyo-os/actions/runs/31610028954) and [run 31610032243](https://github.com/jusbreakindacycle/negosyo-os/actions/runs/31610032243), 2026-08-12 |
+| Database CI (pgTAP) | unchanged, `CI VERIFIED` | Not modified by the mobile migration; re-ran green on PR #14 |
+| Local pgTAP execution | `BLOCKED` | Docker not installed on the founder's machine (DL-026), unchanged. Re-checked 2026-08-13: `docker` and `psql` both absent from PATH |
+| Stocks user interface | `DOCUMENTED_ONLY` | Not started |
 | Permits, Taxes, document vault, AI dashboard | `PLANNED` | Not started |
-| Three-business ceiling (DL-055 item 6) | `DOCUMENTED_ONLY` | Deferred to the next branch, see below |
+| Three-business ceiling (DL-055 item 6) | `IMPLEMENTED_UNVERIFIED` | Migration `20260813090000_limit_active_businesses_per_owner.sql` and suite `06_business_creation_ceiling.test.sql` are written. **Neither has executed anywhere.** Docker is absent, and CI fires on PRs into `main`/`develop`, so no run exists yet |
+| Business lifecycle in the interface | `DOCUMENTED_ONLY` | The `status` column exists and is `VERIFIED` at the database layer, but nothing reads or writes it. `create_business_with_owner` does not set it, so every business takes the column default `operating`. Confirmed on the hosted project 2026-08-13: the single existing business row has status `operating`. See DL-060 |
 
 ## Local verification executed this session (2026-08-09)
 
@@ -82,13 +91,37 @@ See `RISK_REGISTER.md` for the full register. The three that gate what "done" ca
 3. No iOS device or emulator available at all → iOS and Android-emulator evidence will remain
    `NOT EXECUTED` even once the physical Android walkthrough is done.
 
+## Local verification executed 2026-08-13 (`feature/business-creation-ceiling`)
+
+| Command | Result |
+| --- | --- |
+| `npm run lint` | Passes, zero errors |
+| `npm run typecheck` (`tsc --noEmit`) | Passes, zero errors |
+| `npm test` (Vitest) | 36/36 pass across 6 suites — 30 pre-existing plus 6 new in `tests/unit/create-business-errors.test.ts` |
+| `npx expo config --type public` | Valid config resolved |
+| `npx expo export --platform android` | Succeeded, produced an Android Hermes bundle |
+| `docker --version`, `psql --version` | Both absent — the new pgTAP suite cannot run locally (DL-026) |
+
+Read-only catalogue checks against the hosted project `vbmfkfkfpvgezgyahdpb` (Postgres 17.6), to
+replace assumptions in the new migration with checked facts. No write, no DDL, no DML:
+
+| Checked | Observed |
+| --- | --- |
+| `pg_catalog.hashtext(text)` | present, returns `integer` |
+| `pg_catalog.pg_advisory_xact_lock(integer, integer)` | present |
+| `public.business_status` | `draft, registering, operating, closed` — matches the repository |
+| `public.business_role` | `owner` only — so the new `role = 'owner'` predicate guards a future widening rather than filtering anything today |
+| `public.businesses.status` default | `'operating'` |
+| `create_business_with_owner` | `SECURITY DEFINER`, `search_path=""`, no ceiling yet — the expected baseline for a `create or replace` |
+| Live rows in `public.businesses` | one, status `operating` |
+
 ## Exactly one next allowed engineering task
 
-> **`feature/business-creation-ceiling`** — enforce, server-side, at most three businesses whose
-> status is not `closed` per authenticated owner (DL-055 item 6; carried forward in
-> [DL-059](docs/DECISION_LOG.md#dl-059)), as an additive migration with pgTAP coverage proving both
-> the allowed and blocked cases. This is the first follow-up branch after
-> `migration/mobile-foundation` merges, and it precedes all Stocks work.
+> **`feature/business-onboarding-lifecycle`** — replace name-only business onboarding with a
+> lifecycle-aware flow, add the separate registration-status dimension, derive Setup mode and
+> Running mode from `businesses.status`, and add the owner-declared graduation path. Approved by
+> [DL-060](docs/DECISION_LOG.md#dl-060). It begins only after this branch's ceiling work is merged
+> and its CI run observed green.
 
-No Stocks screen, reorder logic, or other Milestone 2C work is authorised before this task and the
-mobile foundation acceptance gate (`docs/BUILD_PLAN.md`) are both complete.
+No Stocks screen, reorder logic, or other Milestone 2C work is authorised before both that task and
+the mobile foundation acceptance gate (`docs/BUILD_PLAN.md`) are complete.
