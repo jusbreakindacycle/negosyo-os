@@ -1,5 +1,9 @@
 # Phase 1A Build Plan
 
+**Mobile-only since 2026-08-09 (DL-056).** Every milestone below builds a native Expo/Expo Router
+application against the unchanged Supabase/PostgreSQL backend. Where a milestone previously
+referenced Next.js-specific work, it is marked superseded rather than rewritten out of history.
+
 ## Working rules
 
 1. Complete one gated slice at a time.
@@ -13,6 +17,7 @@
 6. AI may explain, summarise, prioritise, and draft. Deterministic rules, source-backed facts, permissions, and owner confirmation control high-impact outcomes.
 7. No legal or tax rule is “verified” without a primary source, effective date, applicability conditions, and last-reviewed date.
 8. The database suites now run in CI (DL-053), so the SQL freeze that rule imposed no longer applies for that reason. Phase gate B still governs what may be built next.
+9. Database schema changes are always new additive migrations; an already-applied migration is never edited to suit a later feature (`docs/DEVELOPMENT_WORKFLOW.md`).
 
 ## Status legend
 
@@ -53,30 +58,48 @@ Database verification (complete — see DL-053):
 - [x] Resolve any false-positive or unreachable security assertions.
 - [x] Record the exact assertion count and environment in the decision log.
 
-Application items (still open — none of these was in scope for the database work). Each now has an approved design in DL-055 and is `DOCUMENTED_ONLY`: decided and designed, with no code implementing it.
+Application items — status updated 2026-08-09 by the mobile pivot (DL-059). Two of the three original DL-055 items are resolved; one remains open.
 
-- [ ] Add an authenticated business-creation cap or another documented abuse ceiling before public testing. **Approved design (DL-055):** at most three businesses whose status is not `closed` per authenticated owner, enforced server-side. This is an abuse-control rule, not pricing or subscription packaging. Status `DOCUMENTED_ONLY`.
-- [ ] Validate OTP `type` through an allow-list before calling `verifyOtp`. **Approved design (DL-055):** an explicit runtime allow-list derived only from the authentication flows NegosyoOS actually supports and from the `token_hash` and `type` contract of the `/auth/confirm` route. Status `DOCUMENTED_ONLY`.
-- [ ] Remove build-time dependence on externally downloaded fonts or explicitly accept and test that dependency. **Approved design (DL-055):** replace `next/font/google` with a system-font stack. Status `DOCUMENTED_ONLY`.
+- [ ] Add an authenticated business-creation cap or another documented abuse ceiling before public testing. **Approved design (DL-055):** at most three businesses whose status is not `closed` per authenticated owner, enforced server-side. This is an abuse-control rule, not pricing or subscription packaging. Status `DOCUMENTED_ONLY` — **still open**, and is `PROJECT_STATE.md`'s single next allowed engineering task (`feature/business-creation-ceiling`).
+- [x] Validate OTP `type` through an allow-list before calling `verifyOtp`. **Approved design (DL-055), carried into the native verify path by DL-058:** an explicit runtime allow-list (`['email']`), checked before every `verifyOtp` call in the mobile app. Status per `PROJECT_STATE.md`.
+- [x] `SUPERSEDED` (DL-059): remove build-time dependence on externally downloaded fonts. **Moot** — the client is native (DL-056); there is no Next.js, no `next/font/google`, and no build-time font download to eliminate.
 
 **Exit condition:** Every current migration is reproducible from zero and the full database test suite passes in CI. One intentional security regression has been shown to turn CI red.
 
-**Database exit condition met on 2026-08-04.** Seven migrations applied from zero and 239 assertions across five suites passing on a disposable local stack, Supabase CLI 2.111.0, no hosted-project access ([run 30829590044](https://github.com/jusbreakindacycle/negosyo-os/actions/runs/30829590044)). A deliberate `daily_sales_select_member` regression, applied to the CI database only on a since-deleted branch, turned the job red on exactly the five predicted assertions ([run 30831767471](https://github.com/jusbreakindacycle/negosyo-os/actions/runs/30831767471)). The gate stays open until the three application items above are done.
+**Database exit condition met on 2026-08-04.** Seven migrations applied from zero and 239 assertions across five suites passing on a disposable local stack, Supabase CLI 2.111.0, no hosted-project access ([run 30829590044](https://github.com/jusbreakindacycle/negosyo-os/actions/runs/30829590044)). A deliberate `daily_sales_select_member` regression, applied to the CI database only on a since-deleted branch, turned the job red on exactly the five predicted assertions ([run 30831767471](https://github.com/jusbreakindacycle/negosyo-os/actions/runs/30831767471)). Re-confirmed unchanged by the mobile pivot on 2026-08-09 — `supabase/` was not touched.
 
-**Phase gate B remains open.** Milestone 2C does not begin until the system-font replacement, the OTP allow-list, and the three-business ceiling are implemented and verified. Phase gate A also remains open on its public UI label item, which is tracked separately above.
+**Phase gate B remains open on one item.** Milestone 2C does not begin until the three-business ceiling is implemented and verified. Phase gate A also remains open on its public UI label item, which is tracked separately above.
 
 ---
 
 ## Milestone 0 — Repository and application scaffold
 
-**Status: `VERIFIED`**
+**Status: `SUPERSEDED` by the mobile-foundation reconciliation (DL-056); see Milestone 0M below.**
 
-Previously completed:
+Previously completed, web architecture (retired 2026-08-09):
 
-- Next.js App Router, TypeScript, Tailwind, `src/`, ESLint, lockfile;
-- Supabase client and SSR packages;
-- basic CI for application lint, type check, tests, and build;
-- mobile-first shell.
+- ~~Next.js App Router, TypeScript, Tailwind, `src/`, ESLint, lockfile;~~
+- ~~Supabase client and SSR packages;~~
+- ~~basic CI for application lint, type check, tests, and build;~~
+- ~~mobile-first responsive shell.~~
+
+## Milestone 0M — Native mobile application scaffold
+
+**Status: code complete and locally verified; device walkthrough not yet executed. See
+`PROJECT_STATE.md` for the full evidence matrix.**
+
+Replaces Milestone 0's client. Backend (Supabase project, migrations, RLS) is unchanged and not
+re-verified by this milestone — see Milestone 1.
+
+- [x] Expo SDK 57, Expo Router, TypeScript, ESLint (`eslint-config-expo`), lockfile. Versions from
+      a real `npx expo install` resolution, not hand-picked.
+- [x] Native Supabase client with session persistence and typed email-OTP authentication (code
+      complete; `verifyOtp`/`resend` contract checked against installed `@supabase/auth-js`
+      2.111.0 and current docs — DL-058).
+- [x] CI for application lint, type check, unit tests, `expo config`, `expo export`. All four pass
+      locally; not yet run on GitHub Actions (branch not pushed).
+- [ ] App launches on a physical Android device via Expo Go. **Not yet executed** — requires a
+      human running `npx expo start` in a terminal they can watch, phone in hand.
 
 No rebuild is authorised unless a defect is found.
 

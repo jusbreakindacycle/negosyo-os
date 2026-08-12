@@ -1,14 +1,19 @@
 # Technical Foundation
 
+**Mobile-only since 2026-08-09 (DL-056).** This document previously described a responsive
+Next.js web application. That delivery model is superseded; the rows below reflect the current
+native mobile architecture. Historical web-architecture detail remains readable in Git history at
+commit `9043d50` and earlier.
+
 | Decision | Phase 1A selection |
 | --- | --- |
-| Delivery | Responsive web application; PWA packaging after workflow validation |
-| Framework | Next.js App Router |
+| Delivery | Native mobile application only — no web client, no PWA/TWA path |
+| Framework | Expo, Expo Router |
 | Language | TypeScript |
-| UI | Tailwind CSS + shadcn/ui |
+| UI | React Native core components; no web UI library |
 | Backend | Supabase |
 | Database | PostgreSQL through Supabase |
-| Authentication | Supabase Auth with SSR |
+| Authentication | Supabase Auth, native session persistence (AsyncStorage-backed), typed email OTP |
 | File storage | Supabase Storage |
 | Authorisation | PostgreSQL RLS plus server/database command checks |
 | Repository | One application repository |
@@ -29,18 +34,19 @@
 
 ## 2. Current implementation truth
 
-As of the public repository review on 2026-08-04:
+See `PROJECT_STATE.md` for the current evidence matrix, kept current between documentation
+passes. As of the mobile-foundation reconciliation on 2026-08-09:
 
 | Capability | Status |
 | --- | --- |
-| App scaffold, auth screens, business creation/switching | Implemented |
-| Membership-based tenancy foundation | Implemented; prior verification exists |
-| Application CI | Present |
-| Full database test execution in CI | Established 2026-08-04: seven migrations from zero and 239 assertions across five suites on a disposable stack, pinned CLI, no hosted-project access. A deliberate tenant-isolation regression was observed turning the job red (DL-053) |
+| Mobile application scaffold (Expo Router), auth screens, business creation/switching | See `PROJECT_STATE.md` |
+| Membership-based tenancy foundation | Implemented; prior verification exists (database layer unchanged by the mobile pivot) |
+| Application CI | Present; reconfigured for Expo (see `PROJECT_STATE.md`) |
+| Full database test execution in CI | Established 2026-08-04: seven migrations from zero and 239 assertions across five suites on a disposable stack, pinned CLI, no hosted-project access. A deliberate tenant-isolation regression was observed turning the job red (DL-053). Unchanged by the mobile pivot — `supabase/` is a no-touch zone in this migration |
 | Business lifecycle fields | Migration exists; columns, enum, and default asserted in CI |
 | Tracked items | Migration exists; schema, isolation, and RPC behaviour asserted in CI |
 | Daily sales | Migration and RPCs exist; positive and negative paths asserted in CI |
-| Repository-owned hosted structural parity | `VERIFIED` through the 2026-08-04 read-only catalogue audit (DL-054), covering migration history, tables, columns, constraints, indexes, enums, functions and their bodies, policies, repository-owned grants, and triggers |
+| Repository-owned hosted structural parity | `VERIFIED` through the 2026-08-04 read-only catalogue audit (DL-054), re-confirmed read-only 2026-08-09, covering migration history, tables, columns, constraints, indexes, enums, functions and their bodies, policies, repository-owned grants, and triggers |
 | Hosted runtime RLS behaviour | `IMPLEMENTED_UNVERIFIED` — no pgTAP suite has been run against the hosted project |
 | Stocks user interface | Not implemented |
 | Reorder calculation | Not implemented |
@@ -53,18 +59,18 @@ Do not derive repository status from commit titles alone. The source tree, migra
 
 ## 3. Code organisation
 
-Target organisation:
+Target organisation — a single Expo app at the repository root, not a workspace/monorepo:
 
 ```text
+app/
+├── (auth)/
+└── (app)/
+
 src/
-├── app/
-│   ├── (public)/
-│   ├── (auth)/
-│   └── (app)/
 ├── components/
-│   ├── ui/
 │   └── shared/
 ├── features/
+│   ├── auth/
 │   ├── businesses/
 │   ├── dashboard/
 │   ├── documents/
@@ -73,12 +79,12 @@ src/
 │   └── taxes/
 ├── lib/
 │   ├── supabase/
-│   ├── auth/
 │   ├── validation/
 │   ├── evidence/
 │   ├── rules/
 │   ├── ai/
 │   └── utilities/
+├── hooks/
 └── types/
 
 supabase/
@@ -86,14 +92,15 @@ supabase/
 └── tests/database/
 
 tests/
-├── unit/
-├── integration/
-└── e2e/
+└── unit/
 ```
 
-Internal legacy codenames may survive in migration history or package names, but new user-facing components use Stocks, Permits, and Taxes terminology.
+`app/` holds only Expo Router route files; screen logic and shared code live under `src/`.
+Internal legacy codenames may survive in migration history or package names, but new user-facing
+components use Stocks, Permits, and Taxes terminology.
 
-Avoid a monorepo during Phase 1A unless a measured build or ownership problem requires one.
+Avoid a monorepo during Phase 1A unless a measured build or ownership problem requires one — there
+is exactly one client now, so the case for one is weaker than it was.
 
 ## 4. Domain boundaries
 
@@ -365,25 +372,22 @@ Audit metadata policy:
 - sensitive and financial values justified by purpose and read-audience parity;
 - role changes trigger a privacy review.
 
-## 14. PWA and offline strategy
+## 14. Native app and offline strategy
 
-Validate the online workflow first.
+**Superseded in part by DL-056.** The application is native from the start; there is no manifest,
+installability, or TWA step to reach later — those were web-packaging concepts for the retired
+Next.js delivery. Validate the online workflow first regardless.
 
 Near term:
 
-- mobile-first responsive UI;
+- native mobile-first UI (Expo Router);
 - connectivity status;
 - clear failure/retry behaviour;
 - safe read-only cache where appropriate.
 
-After validation:
-
-- manifest and icons;
-- installability;
-- application-shell caching;
-- TWA evaluation.
-
-Defer offline writes until commands are idempotent and conflicts are defined per record type. Never present unsynchronised compliance or tax status as confirmed.
+Defer offline writes until commands are idempotent and conflicts are defined per record type. Never
+present unsynchronised compliance or tax status as confirmed. Complex offline writes remain a
+Phase 1A exclusion.
 
 ## 15. Validation and forms
 
@@ -391,7 +395,7 @@ Use shared schema validation for every external input.
 
 - Client validation improves usability.
 - Server/RPC validation is authoritative.
-- Query parameters entering security-sensitive calls use allow-lists. The `type` parameter reaching `verifyOtp` in the confirmation-link route does not yet do so; the approved allow-list is `DOCUMENTED_ONLY` (DL-055).
+- Values entering security-sensitive calls use allow-lists. The `type` parameter reaching `verifyOtp` on the native verify screen is checked against an explicit allow-list (`['email']`) before the call, per DL-058.
 - Monetary and date inputs include locale-safe parsing and adversarial tests.
 - Confirmation is required for overwrites and anomalous high-impact values.
 - Accessibility includes label association, focus management, errors, keyboard flow, and screen-reader testing.

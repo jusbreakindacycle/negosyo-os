@@ -1,20 +1,20 @@
 /**
- * Reads the browser-safe Supabase environment variables.
+ * Reads the client-safe Supabase environment variables.
  *
- * Both values are NEXT_PUBLIC_, so they are inlined into the client bundle.
- * Nothing secret belongs in this module. In particular the service-role key
- * must never be read here — it bypasses Row Level Security.
+ * Both values are EXPO_PUBLIC_, so Expo inlines them into the shipped app
+ * bundle. Nothing secret belongs in this module. In particular the
+ * service-role key must never be read here — it bypasses Row Level Security.
  *
  * Missing values fail loudly and by name, because the alternative is a
  * confusing "Invalid URL" error thrown from deep inside the Supabase client.
  */
 export function getSupabaseEnv() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  const publishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   const missing: string[] = [];
-  if (!url) missing.push("NEXT_PUBLIC_SUPABASE_URL");
-  if (!publishableKey) missing.push("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+  if (!url) missing.push("EXPO_PUBLIC_SUPABASE_URL");
+  if (!publishableKey) missing.push("EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
 
   if (missing.length > 0) {
     throw new Error(

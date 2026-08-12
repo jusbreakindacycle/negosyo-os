@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Types for the tables and functions created in supabase/migrations.
  *
  * GENERATED FILE -- do not hand-edit. Regenerate after every migration:

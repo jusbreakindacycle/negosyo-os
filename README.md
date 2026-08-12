@@ -2,6 +2,30 @@
 
 > **Temporary working name.** Final branding, trademark screening, and market positioning are not yet approved.
 
+**NegosyoOS PH is a native mobile application only** — React Native, Expo, Expo Router, TypeScript,
+against a Supabase/PostgreSQL backend. There is no web client, no PWA/TWA path, and no
+"web-first, native-later" plan. See [DL-056](docs/DECISION_LOG.md#dl-056).
+
+## Which document is authoritative for what
+
+- `PROJECT_STATE.md` — what is true *right now*: evidence matrix, active branch, blocking risks,
+  the one next allowed engineering task.
+- `PRODUCT_SPEC.md` — what the product *is*: mobile-only, target user, MVP boundary, sequencing.
+- [`docs/DECISION_LOG.md`](docs/DECISION_LOG.md) — *why*, append-only, most recent entry governs a
+  conflict.
+- [`docs/PROJECT_BLUEPRINT.md`](docs/PROJECT_BLUEPRINT.md) — product authority: thesis, reference
+  cases, validation framework.
+- [`docs/TECHNICAL_FOUNDATION.md`](docs/TECHNICAL_FOUNDATION.md) — implementation boundaries.
+- [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) — authorised build sequence and gates.
+- [`docs/DEVELOPMENT_WORKFLOW.md`](docs/DEVELOPMENT_WORKFLOW.md) — Git branching, tagging, and
+  change-management policy.
+- `RISK_REGISTER.md` / `TEST_STRATEGY.md` — standing risk and test-coverage tracking.
+
+Where two documents disagree, the most recent `docs/DECISION_LOG.md` entry governs the decision;
+`PROJECT_STATE.md` governs what is currently true; `docs/PROJECT_BLUEPRINT.md` governs product
+direction; `docs/TECHNICAL_FOUNDATION.md` governs implementation boundaries;
+`docs/BUILD_PLAN.md` governs sequence.
+
 ## Product statement
 
 **Public-facing**
@@ -58,17 +82,24 @@ A decision is not an implementation. A migration is not a shipped workflow. A wr
 
 ## Current repository state
 
-Public `main` was reviewed on **2026-08-04**. The reviewed baseline was commit `7b59a18`, the tip of `main` before this documentation update; the documentation commit that follows this review will sit on top of it, so `7b59a18` is not necessarily the newest commit by the time you read this.
+**See `PROJECT_STATE.md` for the current evidence matrix** — it is updated more often than this
+section and governs in a conflict. Summary as of the 2026-08-09 mobile-foundation reconciliation:
 
-An earlier milestone commit, `6321534`, is titled “Milestone 2 — Stocks: tracked items, daily sales, and the buying assistant.” That title is broader than the delivered user capability (DL-050). Commit history is not rewritten, so the title stands as written and the correction lives in the decision log.
+The client architecture pivoted to native mobile only (DL-056); the database layer — seven
+migrations, five pgTAP suites, 239 assertions, verified in CI with an observed tenant-isolation
+regression proof (DL-053), and hosted structural parity audited read-only (DL-054, re-confirmed
+2026-08-09) — carried forward unchanged. An earlier milestone commit, `6321534`, is titled
+“Milestone 2 — Stocks: tracked items, daily sales, and the buying assistant.” That title is broader
+than the delivered user capability (DL-050); commit history is not rewritten, so the correction
+lives in the decision log rather than in the commit itself.
 
 | Area | Current evidence status |
 | --- | --- |
-| Next.js application scaffold | `VERIFIED` by prior audit checks |
-| Database verification in CI | `VERIFIED` — seven migrations from zero, 239 assertions across five suites passing, and a deliberate tenant-isolation regression observed turning the job red (DL-053) |
-| Repository-owned hosted structural parity | `VERIFIED` through the 2026-08-04 read-only catalogue audit (DL-054). This covers what the repository owns, not every platform-managed respect of the hosted project |
+| Mobile application scaffold (Expo Router) | See `PROJECT_STATE.md` |
+| Database verification in CI | `VERIFIED` — seven migrations from zero, 239 assertions across five suites passing, and a deliberate tenant-isolation regression observed turning the job red (DL-053); unchanged by the mobile pivot |
+| Repository-owned hosted structural parity | `VERIFIED` through the 2026-08-04 read-only catalogue audit (DL-054), re-confirmed 2026-08-09. This covers what the repository owns, not every platform-managed respect of the hosted project |
 | Hosted runtime RLS behaviour | `IMPLEMENTED_UNVERIFIED` — no pgTAP suite has been run against the hosted project, and no hosted policy has been exercised at runtime |
-| Authentication and business tenancy foundation | `VERIFIED`; the isolation suites now run in CI on every push and pull request (DL-053) |
+| Native authentication and business tenancy | See `PROJECT_STATE.md` |
 | Business lifecycle fields | `VERIFIED` at the database level — columns, enum, and default are asserted in CI; no lifecycle workflow exists in the interface |
 | Tracked priority items database | `VERIFIED` at the database level — schema, isolation, and RPC behaviour assert in CI |
 | Daily-sales database and RPCs | `VERIFIED` at the database level, positive and negative paths included |
@@ -78,7 +109,6 @@ An earlier milestone commit, `6321534`, is titled “Milestone 2 — Stocks: tra
 | Permits workflow | `PLANNED` |
 | Secure document vault | `PLANNED` |
 | Taxes workflow | `PLANNED` |
-| Installable PWA/offline workflow | `PLANNED` |
 
 **Milestone 2 is therefore a partial database foundation, not a completed Stocks feature.**
 
@@ -86,12 +116,13 @@ An earlier milestone commit, `6321534`, is titled “Milestone 2 — Stocks: tra
 
 1. ~~Make the database test suites run in CI and prove they fail when isolation is deliberately broken.~~ Done on 2026-08-04: 239 assertions across five suites, seven migrations applied from zero, and a deliberate tenant-isolation regression observed turning CI red on exactly the predicted assertions (DL-053).
 2. ~~Correct the documentation claims that imply features already exist.~~ Finalised by this documentation change: README, `CLAUDE.md`, the build plan, the technical foundation, and the decision log now carry the same evidence labels.
-3. Replace the internal codenames that still render in the authenticated dashboard with the user-facing product-area names. This is the one remaining Phase gate A item and it is still open.
-4. Close the three remaining Phase gate B application items. All three are `DOCUMENTED_ONLY` — decided and designed in DL-055, with no code implementing any of them:
-   - replace `next/font/google` with a system-font stack, removing the build-time font download;
-   - add an explicit OTP runtime allow-list before `verifyOtp`, derived only from the authentication flows this product supports and from the `token_hash` and `type` contract of the `/auth/confirm` route;
-   - enforce, server-side, a ceiling of at most three businesses whose status is not `closed` per authenticated owner, as an abuse control rather than pricing or packaging.
-5. Only then build one end-to-end Stocks action slice on a real 360px Android viewport. Milestone 2C does not begin until the three Phase gate B items in step 4 are implemented and verified:
+3. ~~Pivot the client to native mobile only.~~ Recorded as DL-056; the `migration/mobile-foundation` reconciliation is this work.
+4. Replace the internal codenames still rendering in the authenticated dashboard with the user-facing product-area names, in the native client. This is the one remaining Phase gate A item.
+5. Close the remaining Phase gate B application item — the other two are resolved by DL-059:
+   - ~~replace `next/font/google` with a system-font stack~~ — moot: there is no Next.js and no build-time font download to eliminate (DL-059);
+   - ~~add an explicit OTP runtime allow-list before `verifyOtp`~~ — carried into the native verify path as `['email']` (DL-058, DL-059);
+   - enforce, server-side, a ceiling of at most three businesses whose status is not `closed` per authenticated owner, as an abuse control rather than pricing or packaging. **Still open** — see `PROJECT_STATE.md`'s next allowed task.
+6. Only then build one end-to-end Stocks action slice on a real 360px Android viewport:
    - configure a small priority-item list;
    - record a count;
    - identify a low or uncertain item;
@@ -99,7 +130,7 @@ An earlier milestone commit, `6321534`, is titled “Milestone 2 — Stocks: tra
    - show the reason and missing information;
    - let the owner confirm, change, or dismiss the action;
    - record the outcome.
-6. Test the workflow with a real operator before expanding to Permits, Taxes, broad AI, or additional verticals.
+7. Test the workflow with a real operator before expanding to Permits, Taxes, broad AI, or additional verticals.
 
 Daily gross sales may support tax estimates and some demand models, but it is **not the universal prerequisite for every Stocks or dashboard action**.
 
@@ -123,7 +154,53 @@ NegosyoOS PH does not:
 
 ```bash
 npm install
-npm run dev
+npx expo start
+```
+
+Then open the app in Expo Go on a physical Android device, or an emulator if one is configured.
+
+### Running on a physical device
+
+Three environment conditions must hold. Each one fails with the same misleading Expo Go
+message, `java.io.IOException: Failed to download remote update`, so check all three
+before suspecting application code.
+
+1. **Expo Go must match the SDK.** SDK 57 requires Expo Go Android client **57.0.3**. An
+   older client fetches the manifest, rejects the `exposdk:57.0.0` runtime version, and
+   never requests a bundle — so the dev server logs nothing at all. Confirm the installed
+   client under Expo Go → Settings.
+
+   **The Google Play listing is not the current client.** As of 2026-08-12 Play serves
+   Expo Go 54.0.8 (published 2026-05-12) and offers no update, which cannot run an SDK 57
+   project. Current Android clients are published as APKs to
+   `https://github.com/expo/expo-go-releases/releases`. Resolve the exact client version
+   and download URL for any SDK from `https://api.expo.dev/v2/versions/latest`, fields
+   `sdkVersions["57.0.0"].androidClientVersion` and `.androidClientUrl`.
+
+   A development build avoids this coupling entirely, because it is compiled against the
+   project's own SDK rather than depending on whichever client Expo has published.
+
+2. **Never hardcode `sdkVersion` in `app.json`.** Expo infers it from the installed `expo`
+   package. A stale pin silently makes the served manifest advertise the wrong runtime.
+   Verify with `npx expo config --type public`.
+
+3. **The device must reach Metro.** Test from the phone's browser at
+   `http://<pc-lan-ip>:8081`. If that is unreachable while the phone and PC share a
+   subnet, the cause is router client/AP isolation or a VPN on the phone, not the firewall.
+   Use the tunnel, which bypasses the LAN entirely:
+
+   ```bash
+   npx expo start --tunnel
+   ```
+
+A cold Metro bundle takes roughly four minutes on a low-power laptop, against about twelve
+seconds warm, which is slow enough to time out the device's download. Warm the cache from
+the PC before scanning the QR code, and reserve `--clear` for genuine stale-cache
+debugging rather than routine starts:
+
+```bash
+curl -s -o /dev/null -w "%{http_code} %{size_download}\n" \
+  "http://127.0.0.1:8081/node_modules/expo-router/entry.bundle?platform=android&dev=true&transform.engine=hermes&transform.bytecode=1&transform.routerRoot=app"
 ```
 
 Application checks:
@@ -132,22 +209,13 @@ Application checks:
 npm run typecheck
 npm run lint
 npm test
-npm run build
+npx expo config --type public
+npx expo export --platform android
 ```
 
 Database changes are not complete until migrations and pgTAP suites run in a repeatable environment, preferably CI. A linked development project may support investigation, but it is not a substitute for an automated regression gate.
 
 That gate now exists. Every push to `main` or `develop`, and every pull request into them, applies all migrations from zero to a disposable Supabase stack and runs the pgTAP suites, reporting the exact executed assertion count. It needs no hosted-project credentials. Running the suites locally still requires Docker, which is not installed on the founder's machine (DL-026), so CI remains the only place they execute.
-
-## Controlling files
-
-Read these before development:
-
-- [`docs/PROJECT_BLUEPRINT.md`](docs/PROJECT_BLUEPRINT.md) — product authority
-- [`docs/TECHNICAL_FOUNDATION.md`](docs/TECHNICAL_FOUNDATION.md) — implementation boundaries
-- [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) — authorised sequence and release gates
-- [`docs/DECISION_LOG.md`](docs/DECISION_LOG.md) — append-only decision history
-- [`CLAUDE.md`](CLAUDE.md) — repository working instructions
 
 ## Development principle
 

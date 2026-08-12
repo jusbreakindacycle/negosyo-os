@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, "migration/**"]
   pull_request:
     branches: [main, develop]
 
@@ -17,12 +17,16 @@ permissions:
   contents: read
 
 jobs:
-  # Job 1: Your original Frontend, Lint, and Unit Checks
+  # Job 1: Application lint, type check, unit tests, and Expo config/export
   verify:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
+        # 22 is Expo's currently documented target; 24 is kept alongside it
+        # while both are observed to pass, matching the "engines" field in
+        # package.json. Either row failing consistently is a reason to narrow
+        # the matrix, not a reason to ignore the failure.
         node-version: ["22", "24"]
 
     steps:
@@ -44,8 +48,11 @@ jobs:
       - name: Unit tests
         run: npm run test
 
-      - name: Production build
-        run: npm run build
+      - name: Validate Expo config
+        run: npx expo config --type public
+
+      - name: Export Android bundle
+        run: npx expo export --platform android
 
   # Job 2: Our new Supabase & pgTAP Security Tester
   test-database:

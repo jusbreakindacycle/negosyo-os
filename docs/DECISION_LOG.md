@@ -952,3 +952,93 @@ The repository migrations neither grant nor revoke anything to `service_role`. T
 The OTP allow-list, the font replacement, and the business ceiling are `DOCUMENTED_ONLY`. They are decided and designed; no code implements them.
 
 Phase gate B remains open until all three are implemented and verified. The database-verification portion of the gate closed on 2026-08-04 (DL-053); the gate as a whole did not.
+
+---
+
+## DL-056 — NegosyoOS PH is a native mobile application only
+
+**Date:** 2026-08-09
+**Status:** Approved founder decision
+
+NegosyoOS PH proceeds as a **native mobile application only**, built with React Native, Expo, Expo Router, and TypeScript. It is not a web application, not a web-plus-mobile platform, not PWA-first, not TWA-first, and not a future-native wrapper around a website.
+
+The backend remains Supabase/PostgreSQL. Nothing about this decision changes tenancy, RLS, migrations, or any domain rule (DL-027 through DL-052 and the evidence-status protocol are untouched).
+
+### What this supersedes
+
+Named individually, so nothing is superseded by implication:
+
+- **DL-004**, delivery and client clauses only: "responsive PWA-first delivery" and the Next.js/Tailwind/shadcn client stack are superseded. DL-004's backend selections (Supabase PostgreSQL, Auth, Storage, RLS) and its one-repository decision are **not** superseded and remain in force.
+- `docs/TECHNICAL_FOUNDATION.md`'s header-table *Delivery*, *Framework*, *UI*, and *Authentication* rows (responsive web app, Next.js App Router, Tailwind + shadcn/ui, Supabase Auth with SSR) are superseded by the mobile equivalents recorded in that document's next revision.
+- `docs/TECHNICAL_FOUNDATION.md` §14, "PWA and offline strategy" — TWA evaluation and web-manifest packaging are superseded; the underlying principle (validate the online workflow before investing in offline writes) is not.
+- The `/auth/confirm` web route as the active authentication architecture is superseded by DL-058.
+
+### What is not superseded
+
+Every domain decision (product thesis, the three product areas, the shared action model, the AI boundary, BMBE modelling, evidence-status protocol, tenancy rule, all Phase 1A exclusions) carries forward unchanged. A person still reaches a business through `business_memberships` and nothing else; the locally selected business remains UI state, never authorisation.
+
+### Consequence
+
+`docs/PROJECT_BLUEPRINT.md`, `docs/TECHNICAL_FOUNDATION.md`, `README.md`, `CLAUDE.md`, and `docs/BUILD_PLAN.md` are updated in the same change that records this decision, so no controlling document continues to describe NegosyoOS PH as a web or PWA/TWA product. `PRODUCT_SPEC.md` and `PROJECT_STATE.md` are added as the current-state documents this decision is tracked against going forward.
+
+---
+
+## DL-057 — Branch model, naming policy, and AI-agent Git safety rules
+
+**Date:** 2026-08-09
+**Status:** Approved founder decision
+
+The Git branching model, tag policy, and database-change workflow are recorded in `docs/DEVELOPMENT_WORKFLOW.md`, created by this decision. Summary:
+
+- `main` is the latest verified/releasable version; `develop` is the next integration target; short-lived branches (`feature/*`, `fix/*`, `hotfix/*`, `refactor/*`, `test/*`, `docs/*`, `chore/*`, `spike/*`, `migration/*`) carry finite, isolated changes and disappear on merge.
+- No permanent module branches (`stocks`, `permits`, `taxes`, `ai`, `auth`, `dashboard`, or similar). Modules live in source organisation and in milestones/issues, not in long-lived branches.
+- Database changes are always additive migrations; an already-applied migration is never edited to suit a later feature.
+- `CLAUDE.md` is updated with a twelve-point BRANCH SAFETY block governing how an AI coding agent must behave in this repository: inspect Git state first, never do normal feature work directly on `main` or `develop`, one capability per branch, no unrequested merges/pushes/branch deletions/force-updates, keep branches buildable, and report branch name, changed files, tests, and database impact at completion.
+
+### Disposition of the pre-existing branch tangle
+
+A full audit (`git cherry`, ahead/behind counts, and line-level content diffs, all against `main`) found that every non-`main` remote and local branch either duplicates work already squash-merged into `main`, or — for the old `develop` — held only the pre-Milestone-1 scaffold that `main`'s history already supersedes. No branch held unique valuable work. None was deleted by this decision; disposition recommendations are recorded in the mobile-foundation reconciliation report, and any deletion requires separate founder approval.
+
+`develop` was reset locally to `main`'s tip. The prior tip is preserved at `archive/develop-pre-mobile-pivot`, and `main`'s pre-pivot tip is tagged `pre-mobile-pivot-2026-08-09`.
+
+---
+
+## DL-058 — Mobile authentication uses a typed six-digit email OTP
+
+**Date:** 2026-08-09
+**Status:** Approved founder decision
+
+The native application authenticates a new sign-up by emailing a six-digit one-time code, typed into an in-app verify screen, rather than a deep link. This was chosen over a deep-link flow because it needs no scheme/intent handling, works identically on a cheap Android device and a flaky network, and needs no redirect allow-list at all — the OTP allow-list below is a stronger and simpler control than validating a URL.
+
+### The contract, checked against the installed library and current documentation, not assumed
+
+`@supabase/auth-js` 2.111.0 (installed) and the current Supabase JavaScript reference both show `verifyOtp` for a typed emailed code as:
+
+```ts
+const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
+```
+
+This is **`type: 'email'`**, not `'signup'`. `resend`, by contrast, only accepts `'signup' | 'email_change'` for an email target — so resending uses `'signup'` while verifying uses `'email'`. These are genuinely different values for two different calls, and code must not unify them.
+
+`EmailOtpType` is `'signup' | 'invite' | 'magiclink' | 'recovery' | 'email_change' | 'email' | (string & {})`. The `(string & {})` member means TypeScript enforces nothing about this value — any string type-checks. This is exactly the gap DL-055 identified for the web `/auth/confirm` route.
+
+### What changes from DL-055's design
+
+DL-055 designed the allow-list against the web route's `token_hash`/`type` query-string contract. That route is retired (DL-056). The allow-list moves into the native verify path and is derived the same way DL-055 required — from the authentication flows this product actually supports — but the concrete value differs: `['email'] as const`, checked before every `verifyOtp` call, since the confirmation flow is the only one implemented. `'recovery'` is added only when password recovery ships, not preemptively.
+
+Sending the emailed code requires the hosted confirmation-email template to use `{{ .Token }}` in place of the current confirmation-link template. This is a founder action outside the code, recorded in the mobile-foundation reconciliation report.
+
+---
+
+## DL-059 — Disposition of the three DL-055 Phase gate B items under mobile
+
+**Date:** 2026-08-09
+**Status:** Approved founder decision
+
+DL-055 left three Phase gate B application items `DOCUMENTED_ONLY`. The mobile pivot changes how two of them are satisfied and leaves the third exactly where it was:
+
+1. **`next/font/google` removal** — resolved by removal of Next.js itself (DL-056). There is no build-time font download to eliminate in a React Native application, so the system-font-stack design in DL-055 is superseded by mooting rather than by implementing it. Marked `SUPERSEDED` in `docs/BUILD_PLAN.md`.
+2. **OTP runtime allow-list** — carried forward into the native verify path exactly as designed in principle, with the concrete allow-list value now `['email']` per DL-058. Marked as implemented once M0.4 lands and device-verified once M0.6 confirms it.
+3. **Three-business ceiling** — **unchanged and still `DOCUMENTED_ONLY`.** This decision does not implement it. It becomes `PROJECT_STATE.md`'s single next allowed engineering task, `feature/business-creation-ceiling`, to be built as its own short-lived branch with an additive migration and pgTAP coverage, before any Stocks work begins.
+
+Phase gate B is therefore not fully closed by the mobile-foundation migration: two of its three items are resolved or in progress, and the ceiling remains open on its own branch.

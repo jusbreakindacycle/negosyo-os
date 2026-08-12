@@ -10,27 +10,27 @@ const ONE: BusinessSummary = { id: "business-one", name: "Business One" };
 const TWO: BusinessSummary = { id: "business-two", name: "Business Two" };
 
 describe("resolveActiveBusinessId", () => {
-  it("honours a cookie that names an authorised business", () => {
+  it("honours a stored value that names an authorised business", () => {
     expect(resolveActiveBusinessId("business-two", [ONE, TWO])).toBe(
       "business-two",
     );
   });
 
-  it("falls back to the first business when there is no cookie", () => {
+  it("falls back to the first business when there is no stored value", () => {
     expect(resolveActiveBusinessId(null, [ONE, TWO])).toBe("business-one");
     expect(resolveActiveBusinessId(undefined, [ONE, TWO])).toBe("business-one");
     expect(resolveActiveBusinessId("", [ONE, TWO])).toBe("business-one");
   });
 
-  // The cookie is attacker-controlled, so naming someone else's business must
-  // not make the interface act as if it were open.
-  it("ignores a cookie naming a business the user is not a member of", () => {
+  // The stored value is attacker-controlled, so naming someone else's
+  // business must not make the interface act as if it were open.
+  it("ignores a stored value naming a business the user is not a member of", () => {
     expect(resolveActiveBusinessId("someone-elses-business", [ONE])).toBe(
       "business-one",
     );
   });
 
-  it("ignores a cookie for a business the user has lost access to", () => {
+  it("ignores a stored value for a business the user has lost access to", () => {
     expect(resolveActiveBusinessId("business-two", [ONE])).toBe("business-one");
   });
 
