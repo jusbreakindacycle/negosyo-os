@@ -4,6 +4,7 @@
     "slug": "negosyo-os",
     "scheme": "negosyoos",
     "version": "0.1.0",
+    "platforms": ["ios", "android"],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -25,7 +26,10 @@
       "expo-router"
     ],
     "extra": {
-      "router": {}
+      "router": {},
+      "eas": {
+        "projectId": "f8ff5fc5-66e1-4aac-a049-d3257c717f2c"
+      }
     }
   }
 }
