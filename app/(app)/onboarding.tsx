@@ -1,3 +1,4 @@
+import { Redirect } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -13,7 +14,7 @@ import { createBusiness } from "@/features/businesses/queries";
 import { createBusinessSchema } from "@/lib/validation/business";
 
 export default function OnboardingScreen() {
-  const { refresh, switchBusiness } = useBusinesses();
+  const { businesses, refresh, switchBusiness } = useBusinesses();
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -39,8 +40,12 @@ export default function OnboardingScreen() {
 
     await switchBusiness(result.business.id);
     refresh();
-    // No manual navigation: the dashboard's own redirect only fires when the
-    // business list is empty, and refresh() has just made it non-empty.
+    // No manual navigation: the redirect below fires as soon as `businesses`
+    // (from context) reflects the refresh, once it resolves.
+  }
+
+  if (businesses.length > 0) {
+    return <Redirect href="/(app)/dashboard" />;
   }
 
   return (
