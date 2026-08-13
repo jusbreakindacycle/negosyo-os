@@ -229,3 +229,7 @@ scope directly on `main` or `develop`, use one correctly named short-lived branc
 never combine unrelated capabilities in one branch, never merge/push/delete branches or force-update
 refs without explicit authorisation, keep a branch buildable, use additive migrations only, and
 report branch name, changed files, tests, database impact, and intended PR target at completion.
+
+`docs/AI_EXECUTION_PROTOCOL.md` decides *how much* reasoning and execution capability a task needs;
+this document and `CLAUDE.md` decide *what* Git behaviour is permitted. Neither overrides the other,
+and no execution mode — including Extended Execution Mode — relaxes any rule above.

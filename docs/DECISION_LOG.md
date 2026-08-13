@@ -1088,3 +1088,137 @@ An owner-declared transition is a statement about operating reality, not a compl
 - No business-type classification system, and no AI-suggested classification. Both were discussed; neither is approved here.
 - No general `UPDATE` grant on `public.businesses` to `authenticated`. The status write path is one RPC with one legal transition set, or it is nothing.
 - No change to tenancy: a person still reaches a business through `business_memberships` and nothing else.
+
+---
+
+## DL-061 — Skills and plugin adoption policy adopted; the two active Supabase skills recorded
+
+**Date:** 2026-08-13
+**Status:** Approved founder decision
+
+### What is adopted
+
+`docs/CLAUDE_SKILLS_POLICY.md` becomes a standing **process authority** for this repository. It is
+subordinate to every document in the authority chain in `README.md`. It recommends; only an entry in
+this log adopts. It was written outside this repository and reviewed here before being committed —
+it is not treated as a higher authority than the repository's own governance.
+
+Its default posture is **skip**. A skill or plugin is adopted only when it closes a verified gap in
+this project's actual stack or workflow, does not duplicate governance already enforced by
+`CLAUDE.md` / this log / branch safety or a capability already built in, and comes from a maintainer
+who can be checked before being granted access. The point the repository had nowhere else: an
+installed skill runs with the session's tool and shell permissions, so an unreviewed skill is a
+supply-chain surface, not a free upgrade.
+
+### The gap this closes, recorded retroactively
+
+`.claude/settings.json` has enabled `supabase@supabase-agent-skills` and
+`postgres-best-practices@supabase-agent-skills`, from the official `supabase/agent-skills`
+marketplace, **with no decision entry authorising them**. That was found by the audit that produced
+this entry, not by the policy document.
+
+Judged against the policy's own test, both pass: the maintainer is the official Supabase
+organisation; the gap is real on a Supabase, RLS, and migration-heavy stack; and neither duplicates
+governance enforced here. **They stay enabled, and are now recorded.** No other skill or plugin is
+adopted. The rejections and "consider" candidates listed in the policy are recommendations only and
+authorise nothing.
+
+### What was removed from the committed copy, and why
+
+The file arrived as a cross-repository policy naming the founder's other project. Committing another
+repository's internals into this one's permanent history is not something to do as a side effect, so
+two things were removed before it was tracked:
+
+1. Its "Verified current state" comparison table. Its NegosyoOS column duplicated `PROJECT_STATE.md`,
+   which governs what is currently true here and had already drifted from it; its other column
+   described a different repository.
+2. Two standing recommendations addressed entirely to that other repository.
+
+Both are preserved in that repository's own copy of the policy, confirmed by the founder before
+removal. Every adoption principle, every verdict in the review table, and every stated reason were
+retained; six rows were rewritten only to strip the other project's identity, brand values, and
+decision identifiers while keeping the verdict and reasoning intact. Two incidental references to
+HOA and RA 9904 were deliberately kept, because they are live reasoning about whether a skill
+applies, not repository internals.
+
+The consequence is recorded plainly: the two copies are **no longer byte-identical**, and the file's
+own claim that they were has been corrected rather than left standing.
+
+### Naming
+
+The filename `docs/CLAUDE_SKILLS_POLICY.md` is retained deliberately, against this repository's
+subject-naming convention, because a sibling copy exists elsewhere under the same name. Any rename
+must be coordinated across both repositories rather than done in one.
+
+---
+
+## DL-062 — AI execution and routing protocol adopted as a subordinate process authority
+
+**Date:** 2026-08-13
+**Status:** Approved founder decision
+
+### What is created
+
+`docs/AI_EXECUTION_PROTOCOL.md`, the canonical source for choosing how much reasoning and execution
+capability a task needs: task classification, model/effort/mode routing, escalation, de-escalation,
+and the three execution modes.
+
+It follows the shape DL-057 established for `docs/DEVELOPMENT_WORKFLOW.md` — canonical detail in
+`docs/`, a condensed block in `CLAUDE.md`, no instruction duplicated in two places. DL-008's
+minimal-documentation rule is not breached: that rule forbids a Markdown file per task, feature,
+screen, or discussion, and this is a durable cross-cutting process policy of the same kind DL-057
+already created.
+
+### The honest limit, stated in the document itself
+
+**No repository file can make Claude Code or any other AI environment change its own model, effort,
+or execution mode.** The protocol is advisory to the founder, who sets whatever the active
+environment exposes, and self-regulating for the agent, which controls depth of investigation, when
+to stop, and when to ask.
+
+For the same reason the protocol applies this repository's evidence protocol to itself: every model
+tier, effort level, and execution mode it names carries a status label, and a `RESEARCH_REQUIRED`
+capability may not be routed to. At the time of writing, `haiku`/`sonnet`/`opus`/`fable` are
+`VERIFIED` as selectable for a delegated subagent; the effort vocabulary `low · medium · high ·
+xhigh · max` is `VERIFIED` for the review surface only; "Extra High" as a distinct level and
+"Ultracode" are `RESEARCH_REQUIRED` and are not routed to; and the multi-agent cloud review is
+founder-triggered and billed, so it may be recommended and never invoked by the agent.
+
+### Governing principle
+
+> Use the smallest sufficient configuration that can reliably complete the task without sacrificing
+> architectural, security, or data-integrity quality.
+
+Maximum effort and extended execution are never defaults. Two rules override the routing table:
+anything touching migrations, RLS, tenancy, grants, `SECURITY DEFINER`, or an already-applied
+migration is high-consequence however small the diff looks; and "agentic" does not mean "better" —
+long-horizon execution suits clear paths, not unresolved ones.
+
+### What it is subordinate to
+
+The protocol authorises nothing. It never permits a commit, push, branch, pull request, merge,
+deployment, hosted database write, or destructive operation; those come only from `CLAUDE.md` branch
+safety and explicit founder authorisation, in every mode. It never relaxes the evidence protocol
+(DL-049), the negative-case rule (DL-026, DL-053), the completion-report format, the additive-
+migration rule, or the tenancy rule. It never overrides `PROJECT_STATE.md`'s single next allowed
+engineering task: escalation on discovering hidden complexity means stop and return to the founder,
+not widen scope. De-escalation lowers reasoning capability and never the verification floor.
+
+### Naming, and the exclusion it must not be confused with
+
+The third execution mode is named **Extended Execution Mode**, not "autonomous mode".
+`CLAUDE.md`, `docs/BUILD_PLAN.md`, `docs/PROJECT_BLUEPRINT.md`, and `docs/TECHNICAL_FOUNDATION.md`
+all exclude **autonomous AI agents** from Phase 1A. That exclusion governs what NegosyoOS ships to a
+business owner; it says nothing about how development work is carried out. A one-clause
+clarification was added to the exclusion bullet in `CLAUDE.md` only — the operative instruction file,
+where the ambiguity would actually reach an agent. The identical phrasing in the build plan,
+blueprint, and technical foundation was deliberately left unchanged, because clarifying one sentence
+in four documents is not a minimal change, and the protocol carries the same distinction in its own
+text.
+
+### Scope
+
+This is a documentation change. It touches no product code, no Supabase file, no migration, no test,
+and no CI configuration, and it does not modify `PROJECT_STATE.md`. It neither consumes nor reorders
+the next allowed engineering task, `feature/business-onboarding-lifecycle` (DL-060), which is
+unaffected.

@@ -19,6 +19,11 @@ against a Supabase/PostgreSQL backend. There is no web client, no PWA/TWA path, 
 - [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) — authorised build sequence and gates.
 - [`docs/DEVELOPMENT_WORKFLOW.md`](docs/DEVELOPMENT_WORKFLOW.md) — Git branching, tagging, and
   change-management policy.
+- [`docs/AI_EXECUTION_PROTOCOL.md`](docs/AI_EXECUTION_PROTOCOL.md) — how much reasoning and execution
+  capability an AI-assisted task needs: classification, routing, escalation, de-escalation, and
+  execution modes. Subordinate to every document above.
+- [`docs/CLAUDE_SKILLS_POLICY.md`](docs/CLAUDE_SKILLS_POLICY.md) — whether an additional skill or
+  plugin should be adopted at all. Subordinate to every document above.
 - `RISK_REGISTER.md` / `TEST_STRATEGY.md` — standing risk and test-coverage tracking.
 
 Where two documents disagree, the most recent `docs/DECISION_LOG.md` entry governs the decision;
