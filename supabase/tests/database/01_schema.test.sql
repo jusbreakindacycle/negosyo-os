@@ -65,7 +65,8 @@ select col_is_null('public', 'profiles', 'display_name',
 
 select columns_are(
   'public', 'businesses',
-  array['id', 'name', 'legal_name', 'status', 'created_by', 'created_at', 'updated_at'],
+  array['id', 'name', 'legal_name', 'status', 'registration_status', 'created_by',
+        'created_at', 'updated_at'],
   'businesses has exactly the expected columns'
 );
 select col_type_is('public', 'businesses', 'id', 'uuid',
@@ -91,6 +92,18 @@ select col_not_null('public', 'businesses', 'status',
   'businesses.status is not null');
 select col_has_default('public', 'businesses', 'status',
   'businesses.status defaults, so rows created before Milestone 2 stayed valid');
+
+-- The registration dimension is separate from the lifecycle and must stay
+-- separate: an operating business may be fully registered or not registered at
+-- all, and one enum cannot carry both facts (DL-060 item 3, DL-063).
+select col_not_null('public', 'businesses', 'registration_status',
+  'businesses.registration_status is not null');
+select col_has_default('public', 'businesses', 'registration_status',
+  'businesses.registration_status defaults, so rows created before the lifecycle work stayed valid');
+-- That the default is specifically `unknown` is asserted behaviourally in
+-- 07_business_lifecycle.test.sql, by inserting a row without the column and
+-- reading it back. Comparing the catalogue's rendering of the default
+-- expression would test how Postgres spells a cast, not what the column does.
 
 select columns_are(
   'public', 'business_memberships',
@@ -144,6 +157,12 @@ select has_type('public', 'business_status', 'business_status type exists');
 select enum_has_labels('public', 'business_status',
   array['draft', 'registering', 'operating', 'closed'],
   'business_status covers the whole lifecycle, including closure');
+
+select has_type('public', 'business_registration_status',
+  'business_registration_status type exists');
+select enum_has_labels('public', 'business_registration_status',
+  array['unknown', 'not_started', 'in_progress', 'complete'],
+  'business_registration_status carries unknown as a real value, not a null');
 
 select has_type('public', 'audit_domain', 'audit_domain type exists');
 select enum_has_labels('public', 'audit_domain',
@@ -314,8 +333,55 @@ select table_privs_are('public', 'audit_events', 'authenticated',
 -- Function exposure
 -- ---------------------------------------------------------------------------
 
-select has_function('public', 'create_business_with_owner', array['text'],
+select has_function('public', 'create_business_with_owner',
+  array['text', 'boolean', 'business_registration_status', 'text'],
   'the business creation RPC exists');
+
+-- Asserted from the catalogue as well as through has_function, for two
+-- reasons. It states the signature in one readable place, and if pgTAP ever
+-- normalises a type name differently from regtype the two assertions fail with
+-- different messages, which is the difference between "the signature changed"
+-- and "the harness disagrees about how to spell an enum".
+select is(
+  (select array_agg(t.oid::regtype::text order by t.ord)
+     from pg_proc p
+     join pg_namespace n on n.oid = p.pronamespace
+     cross join lateral unnest(p.proargtypes::oid[]) with ordinality as t(oid, ord)
+    where n.nspname = 'public' and p.proname = 'create_business_with_owner'),
+  array['text', 'boolean', 'business_registration_status', 'text'],
+  'the creation RPC takes a name, an operating declaration, a registration status, and an optional legal name'
+);
+
+-- The security property the old pronargs assertion protected, restated so it
+-- survives the signature change: there is no user-identity parameter of any
+-- name or type. Identity comes from auth.uid() and nowhere else, so there is
+-- nothing to impersonate through.
+select is(
+  (select count(*)::int
+     from pg_proc p
+     join pg_namespace n on n.oid = p.pronamespace
+     cross join lateral unnest(p.proargtypes::oid[]) as t(oid)
+    where n.nspname = 'public' and p.proname = 'create_business_with_owner'
+      and t.oid = 'uuid'::regtype),
+  0,
+  'the creation RPC exposes no uuid parameter, so no caller can create a business as someone else'
+);
+
+-- No lifecycle-status parameter either. The status is derived inside the
+-- function from the owner's answers (DL-063), which is what makes `closed`
+-- impossible at creation by construction rather than by a guard that could be
+-- removed.
+select is(
+  (select count(*)::int
+     from pg_proc p
+     join pg_namespace n on n.oid = p.pronamespace
+     cross join lateral unnest(p.proargtypes::oid[]) as t(oid)
+    where n.nspname = 'public' and p.proname = 'create_business_with_owner'
+      and t.oid = 'business_status'::regtype),
+  0,
+  'the creation RPC accepts no lifecycle status, so a caller cannot choose one'
+);
+
 select is(
   (select prosecdef from pg_proc p
      join pg_namespace n on n.oid = p.pronamespace
@@ -339,12 +405,61 @@ select is(
   'create_business_with_owner pins an empty search_path'
 );
 
-select function_privs_are('public', 'create_business_with_owner', array['text'],
+-- The function was dropped and recreated in 20260813141500, and a recreated
+-- function does not inherit its predecessor's ACL. These two assertions are
+-- what prove the restored grants actually took.
+select function_privs_are('public', 'create_business_with_owner',
+  array['text', 'boolean', 'business_registration_status', 'text'],
   'authenticated', array['EXECUTE'],
   'authenticated may call the business creation RPC');
-select function_privs_are('public', 'create_business_with_owner', array['text'],
+select function_privs_are('public', 'create_business_with_owner',
+  array['text', 'boolean', 'business_registration_status', 'text'],
   'anon', array[]::text[],
   'anon may not call the business creation RPC');
+
+
+-- The lifecycle declaration RPC, which is the only write path for
+-- businesses.status. There is deliberately no UPDATE grant to go with it --
+-- see the table_privs_are assertion above, which still pins `authenticated` to
+-- SELECT alone.
+select has_function('public', 'declare_business_status',
+  array['uuid', 'business_status'],
+  'the lifecycle declaration RPC exists');
+select is(
+  (select array_agg(t.oid::regtype::text order by t.ord)
+     from pg_proc p
+     join pg_namespace n on n.oid = p.pronamespace
+     cross join lateral unnest(p.proargtypes::oid[]) with ordinality as t(oid, ord)
+    where n.nspname = 'public' and p.proname = 'declare_business_status'),
+  array['uuid', 'business_status'],
+  'declare_business_status takes the business and the target status, and no user id'
+);
+select is(
+  (select prosecdef from pg_proc p
+     join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'declare_business_status'),
+  true,
+  'declare_business_status is SECURITY DEFINER'
+);
+select is(
+  (select array_agg(
+            split_part(cfg, '=', 1) || '=' || btrim(split_part(cfg, '=', 2), '"')
+            order by cfg)
+     from pg_proc p
+     join pg_namespace n on n.oid = p.pronamespace
+     cross join lateral unnest(p.proconfig) as cfg
+    where n.nspname = 'public' and p.proname = 'declare_business_status'),
+  array['search_path='],
+  'declare_business_status pins an empty search_path'
+);
+select function_privs_are('public', 'declare_business_status',
+  array['uuid', 'business_status'],
+  'authenticated', array['EXECUTE'],
+  'authenticated may call the lifecycle declaration RPC');
+select function_privs_are('public', 'declare_business_status',
+  array['uuid', 'business_status'],
+  'anon', array[]::text[],
+  'anon may not call the lifecycle declaration RPC');
 
 -- Helper functions live in private, which is not an exposed schema.
 select has_function('private', 'set_updated_at', 'the timestamp trigger helper is private');

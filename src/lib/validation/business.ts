@@ -19,3 +19,20 @@ export const createBusinessSchema = z.object({
 });
 
 export type CreateBusinessInput = z.infer<typeof createBusinessSchema>;
+
+/**
+ * Registered DTI or SEC name rules.
+ *
+ * Mirrors the `businesses_legal_name_length` check constraint and the guard in
+ * `create_business_with_owner`: trimmed, between 2 and 200 characters.
+ *
+ * Applied only when the owner actually typed something. The field is optional
+ * wherever it is offered, and a business with no registered name is a normal,
+ * often permanent state — the product records its absence rather than pressing
+ * for a value that does not exist yet.
+ */
+export const legalNameSchema = z
+  .string()
+  .trim()
+  .min(2, { message: "Use at least 2 characters, or leave this blank." })
+  .max(200, { message: "Use 200 characters or fewer." });

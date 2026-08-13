@@ -8,10 +8,32 @@
  * browser cookie to on-device storage.
  */
 
+import type { BusinessStatus, RegistrationStatus } from "./business-mode";
+
 export type BusinessSummary = {
   id: string;
   name: string;
+  /** Drives Setup mode versus Running mode. Never a stored flag — see `business-mode.ts`. */
+  status: BusinessStatus;
+  /** The owner's recorded registration position. Never affects the mode. */
+  registration_status: RegistrationStatus;
+  /** The registered DTI or SEC name, when one exists. Null is normal and permanent for many businesses. */
+  legal_name: string | null;
 };
+
+/**
+ * Whether the person has a business they can actually work in.
+ *
+ * A closed business is still theirs and still readable, but it is not somewhere
+ * to record today's takings. Onboarding uses this rather than a plain length
+ * check so that an owner whose only businesses are closed can start another one
+ * instead of being redirected in a circle (DL-063, D-1).
+ */
+export function hasUsableBusiness(
+  businesses: readonly BusinessSummary[],
+): boolean {
+  return businesses.some((b) => b.status !== "closed");
+}
 
 /**
  * Picks the active business from an attacker-controlled stored preference.
@@ -35,7 +57,17 @@ export function resolveActiveBusinessId(
     return storedValue;
   }
 
-  return businesses[0].id;
+  // Prefer a business that is not closed. An owner returning to the app should
+  // land somewhere they can work, not on a business they have shut down —
+  // and without this, an owner whose first-created business was closed would
+  // open the app into the closed notice every time.
+  //
+  // An explicit stored preference above still wins, closed or not: if they
+  // deliberately switched to a closed business to look at it, switching away
+  // from underneath them would be the surprising behaviour.
+  const firstUsable = businesses.find((b) => b.status !== "closed");
+
+  return (firstUsable ?? businesses[0]).id;
 }
 
 /** The resolved business itself, or null when the person has none yet. */

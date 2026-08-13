@@ -1222,3 +1222,162 @@ This is a documentation change. It touches no product code, no Supabase file, no
 and no CI configuration, and it does not modify `PROJECT_STATE.md`. It neither consumes nor reorders
 the next allowed engineering task, `feature/business-onboarding-lifecycle` (DL-060), which is
 unaffected.
+
+---
+
+## DL-063 — Business onboarding lifecycle: approved implementation design
+
+**Date:** 2026-08-13
+**Status:** Approved founder decision
+
+DL-060 approved the direction and left the concrete design open. This entry records how it resolved.
+It **extends and concretises DL-060; it does not supersede or rewrite it.** Everything DL-060 says
+about the two dimensions, the owner-declared graduation, and what it does not authorise remains in
+force.
+
+### Lifecycle initialisation is derived, not chosen
+
+`businesses.status` keeps its four values and gains no siblings. A **separate**
+`business_registration_status` enum — `unknown | not_started | in_progress | complete` — carries how
+far formal registration has got, exactly as DL-060 item 3 requires.
+
+The initial lifecycle value is a **deterministic function of two owner answers**, and that function
+lives in one place: inside `create_business_with_owner`.
+
+| Owner declares the business open? | `registration_status` | → `status` | Entry case |
+|---|---|---|---|
+| no | `not_started` | `draft` | new / pre-opening |
+| no | `unknown` | `draft` | question declined |
+| no | `in_progress` or `complete` | `registering` | registered or partly registered, not yet open |
+| **yes** | `complete` | `operating` | already operating, registered |
+| **yes** | `not_started` or `in_progress` | `operating` | already operating, informally |
+
+An owner who is trading is `operating` whatever their registration says. That is what keeps *no
+permit ≠ not operating* true in the data rather than only in prose.
+
+### The creation RPC takes no lifecycle status
+
+`create_business_with_owner(p_name text)` is **dropped and recreated** in a new forward migration —
+required, not stylistic: adding defaulted parameters to a function creates a second overload rather
+than replacing it, which would make the existing one-argument call ambiguous. The already-applied
+migrations `20260731125416` and `20260813090000` are left byte for byte as they were applied, and
+the new migration restores the `revoke`/`grant` pair explicitly, because a recreated function does
+not inherit the old ACL.
+
+The new signature is:
+
+```
+create_business_with_owner(
+  p_name                text,
+  p_is_operating        boolean                             default false,
+  p_registration_status public.business_registration_status default 'unknown',
+  p_legal_name          text                                default null
+)
+```
+
+There is **no client-supplied lifecycle status parameter.** The alternative — accept a status and
+validate it against the table above — was rejected: it would put the mapping in the client and
+oblige the server to re-derive it anyway, leaving two copies of one rule and a class of
+inconsistent input to reject. Deriving it server-side makes an inconsistent combination
+unrepresentable instead of merely refused, and makes `closed` at creation impossible by
+construction.
+
+Consequences recorded so a later reader does not mistake them for omissions:
+
+- `create_business_with_owner('X')` still resolves and yields `draft` + `unknown`. The default is
+  **not** `operating`; assuming a business is trading is the defect DL-060 exists to fix.
+- The `invalid_initial_status` error branch designed earlier is **removed, not retained.** With no
+  status parameter it is unreachable, and a dead error branch kept for symmetry is a lie about what
+  the function can do.
+- Everything else is unchanged: identity from `auth.uid()` only, empty `search_path`, the advisory
+  transaction lock, the membership-counted three-business ceiling excluding `closed` (DL-055 item
+  6), no `EXCEPTION` block, and one audit event per creation.
+
+### Graduation
+
+`declare_business_status(p_business_id uuid, p_status public.business_status)`, `SECURITY DEFINER`
+with an empty `search_path`, `execute` revoked from `public` and `anon`. **No `UPDATE` grant on
+`public.businesses` is added** — DL-060 forbids it and the schema tests assert its absence.
+
+Legal transitions, and nothing else:
+
+- `draft → operating`
+- `registering → operating`
+
+Refused, each distinguishably: a missing session (`auth_required`), a non-member or a business that
+does not exist (`not_a_member`, reported identically so an id cannot be probed), and everything
+outside the two rows above (`invalid_status_transition`) — including no-ops, so the audit trail
+never records a non-change, un-graduation, and any transition into or out of `closed`.
+
+`draft → registering` is deliberately absent. Moving a business into the registration phase belongs
+to Permits, which will have real evidence behind it; a control here would change a word on a screen
+and nothing else.
+
+Each successful call writes one audit event: domain `shared`, action `business.status_declared`,
+with `previous_status` read from the row inside the function and never supplied by the caller
+(the DL-041 rule). `previous_status` is the value the audit row exists to preserve — it is
+unrecoverable once the update commits. Read audience is unchanged, so the DL-043 parity invariant
+still holds.
+
+### `registration_status` semantics
+
+An **owner self-declaration**, not evidence, not verification, and never a compliance
+determination. `complete` must never render as registered, compliant, approved, or eligible; the
+interface says *recorded as*. `not_started` must never render as non-compliant and must never
+block, gate, or downgrade any workflow. Permits owns evidence, sources, jurisdictions, and dates.
+
+`unknown` is the column default so that rows created before this migration stay honest: nobody
+asked those owners, and the product must not answer for them. It is also what an owner who declines
+the question gets.
+
+### The eight decisions this entry closes
+
+1. **D-1 — closed businesses.** Never auto-selected while a non-closed business exists. When every
+   business an owner holds is closed, a read-only notice renders and onboarding becomes reachable
+   again: its guard changes from *has any business* to *has any non-closed business*, so an account
+   cannot dead-end. Nothing in this branch can set `closed`.
+2. **D-2 — second-business creation UI is out of scope**, as a separate capability. The standing
+   consequence is recorded rather than fixed: onboarding redirects away once a usable business
+   exists and no "add another business" control exists, so the business switcher and the
+   three-business ceiling both remain unreachable through the interface. The ceiling is therefore
+   in practice a permanent cap, because closing — the only thing that frees a slot — has no path
+   either. This branch does not worsen that; it makes it more visible.
+3. **D-3 — the deterministic mapping above**, authoritative inside the RPC.
+4. **A-1 — drop and recreate** the creation function in a new forward migration, restoring grants
+   explicitly.
+5. **A-2 — `src/types/database.ts` is hand-maintained** for this change only, clearly marked as
+   temporary. Neither generation path is available: `db:types` needs Docker (absent, DL-026) and
+   `db:types:linked` needs the hosted project to hold these migrations, which A-4 forbids. The
+   pgTAP suites remain the authority on the schema; the file is regenerated once hosted parity is
+   reconciled.
+6. **A-3 — `PROJECT_STATE.md` is not modified by this branch.** Evidence and repository-state
+   reconciliation stays a separate task, as does the stale documentation it will correct.
+7. **A-4 — see the merge gate below.**
+8. **A-5 — registration progress is frozen after onboarding.** No editing path is added. A business
+   that registers later cannot update the value until Permits ships, so every surface that shows it
+   words it as a record made during setup rather than a current fact.
+
+### Merge gate
+
+The hosted project holds seven migrations; this branch brings the repository to ten. A client
+sending the new arguments to the hosted one-argument function fails outright, so merging this branch
+would put a known client/backend contract break on `main`.
+
+**Implementation, commits, pushes, pull-request creation, and CI are permitted. Merging into `main`
+is prohibited until a hosted-parity plan and its sequencing are explicitly authorised as separate
+work.** No hosted write occurs in this branch.
+
+The same constraint sets this branch's evidence ceiling. Device verification is impossible while the
+hosted project lacks these migrations, so every screen delivered here remains
+`IMPLEMENTED_UNVERIFIED`, and the achievable evidence is lint, type check, unit tests, Expo config
+and export, and the pgTAP suites in CI.
+
+### What this does not authorise
+
+No Stocks screen, reorder logic, or purchase list; Milestone 2C's gate is unchanged. No Permits or
+Taxes implementation. No business-context columns — nature of business, industry classification,
+operating model, customer model, existing tools — and no automatic or AI-assisted business-type
+detection or capability mapping; those belong to a later, separately authorised branch built on this
+foundation. No closing workflow. No second-business creation UI. No `UPDATE` grant on
+`public.businesses`. No change to tenancy: a person still reaches a business through
+`business_memberships` and nothing else.

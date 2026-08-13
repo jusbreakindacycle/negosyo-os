@@ -1,7 +1,19 @@
 import { supabase } from "@/lib/supabase/client";
 
-import { describeCreateBusinessError } from "./create-business-errors";
+import type { BusinessStatus, RegistrationStatus } from "./business-mode";
+import {
+  describeCreateBusinessError,
+  describeStatusChangeError,
+} from "./create-business-errors";
 import type { BusinessSummary } from "./resolve-active-business";
+
+/**
+ * Everything the business row carries that the interface reads. Selected in one
+ * place so a screen cannot quietly start depending on a column the list query
+ * does not fetch — which is exactly how `status` came to be modelled in the
+ * database and invisible to the client for eleven days (DL-060).
+ */
+const BUSINESS_COLUMNS = "id, name, status, registration_status, legal_name";
 
 /**
  * The businesses the signed-in person may use.
@@ -21,7 +33,7 @@ import type { BusinessSummary } from "./resolve-active-business";
 export async function listMyBusinesses(): Promise<BusinessSummary[]> {
   const { data, error } = await supabase
     .from("businesses")
-    .select("id, name")
+    .select(BUSINESS_COLUMNS)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -52,31 +64,92 @@ export async function hasMembership(businessId: string): Promise<boolean> {
   return data !== null;
 }
 
+/** What onboarding collected. The lifecycle status is deliberately absent. */
+export type CreateBusinessInput = {
+  name: string;
+  /** The owner's statement that the business is already trading. */
+  isOperating: boolean;
+  registrationStatus: RegistrationStatus;
+  legalName: string | null;
+};
+
 /**
  * Creates a business and its creator's owner membership in one transaction,
- * via the unchanged `create_business_with_owner` RPC (see
- * `supabase/migrations/20260731125416_create_business_with_owner_function.sql`).
- * There is no path that writes these tables separately — `authenticated`
- * holds no INSERT grant on any of them.
+ * via `create_business_with_owner` (see
+ * `supabase/migrations/20260813141500_business_lifecycle_rpcs.sql`). There is no
+ * path that writes these tables separately — `authenticated` holds no INSERT
+ * grant on any of them.
+ *
+ * **No lifecycle status is sent, and none may be added here.** The RPC derives
+ * it from `isOperating` and `registrationStatus`, and DL-063 puts that mapping
+ * there so it exists once. A client that computed `draft` or `operating` itself
+ * would be a second copy of the rule, free to disagree with the first.
  *
  * The RPC also refuses a fourth business whose status is not `closed`
- * (DL-055 item 6, migration `20260813090000_limit_active_businesses_per_owner`).
- * That refusal is not currently reachable from any screen — this is the only
- * caller, and the onboarding screen it belongs to redirects away once the
- * person has a business. It is mapped here regardless, because the RPC is
- * callable directly through the Data API by anyone holding a valid
+ * (DL-055 item 6). That refusal is not reachable from any screen — onboarding
+ * redirects away once the person has a usable business, and no "add another
+ * business" control exists yet (DL-063, D-2). It is mapped regardless, because
+ * the RPC is callable directly through the Data API by anyone holding a valid
  * `authenticated` token, which is the abuse the ceiling exists to stop.
  */
 export async function createBusiness(
-  name: string,
+  input: CreateBusinessInput,
 ): Promise<{ business: BusinessSummary | null; error: string | null }> {
   const { data, error } = await supabase.rpc("create_business_with_owner", {
-    p_name: name,
+    p_name: input.name,
+    p_is_operating: input.isOperating,
+    p_registration_status: input.registrationStatus,
+    p_legal_name: input.legalName,
   });
 
   if (error) {
     return { business: null, error: describeCreateBusinessError(error.message) };
   }
 
-  return { business: { id: data.id, name: data.name }, error: null };
+  return { business: toSummary(data), error: null };
+}
+
+/**
+ * Records the owner's declaration that a business has started operating.
+ *
+ * DL-031 made the mayor's permit the trigger for this transition; Permits is
+ * two milestones away, so until it ships the owner may say so themselves
+ * (DL-060 item 4). This is a statement about operating reality and certifies
+ * nothing — no screen may present it as a compliance claim.
+ *
+ * The legal transition set lives in the RPC, not here. This function can ask
+ * for anything; the database is what decides.
+ */
+export async function declareBusinessStatus(
+  businessId: string,
+  status: BusinessStatus,
+): Promise<{ business: BusinessSummary | null; error: string | null }> {
+  const { data, error } = await supabase.rpc("declare_business_status", {
+    p_business_id: businessId,
+    p_status: status,
+  });
+
+  if (error) {
+    return { business: null, error: describeStatusChangeError(error.message) };
+  }
+
+  return { business: toSummary(data), error: null };
+}
+
+type BusinessRow = {
+  id: string;
+  name: string;
+  status: BusinessStatus;
+  registration_status: RegistrationStatus;
+  legal_name: string | null;
+};
+
+function toSummary(row: BusinessRow): BusinessSummary {
+  return {
+    id: row.id,
+    name: row.name,
+    status: row.status,
+    registration_status: row.registration_status,
+    legal_name: row.legal_name,
+  };
 }
