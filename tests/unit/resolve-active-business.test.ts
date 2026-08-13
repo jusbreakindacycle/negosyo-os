@@ -1,35 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  hasUsableBusiness,
   resolveActiveBusiness,
   resolveActiveBusinessId,
   type BusinessSummary,
 } from "@/features/businesses/resolve-active-business";
 
-function business(
-  id: string,
-  name: string,
-  overrides: Partial<BusinessSummary> = {},
-): BusinessSummary {
-  return {
-    id,
-    name,
-    status: "operating",
-    registration_status: "unknown",
-    legal_name: null,
-    ...overrides,
-  };
-}
-
-const ONE: BusinessSummary = business("business-one", "Business One");
-const TWO: BusinessSummary = business("business-two", "Business Two");
-const CLOSED_ONE: BusinessSummary = business("business-one", "Business One", {
-  status: "closed",
-});
-const DRAFT_TWO: BusinessSummary = business("business-two", "Business Two", {
-  status: "draft",
-});
+const ONE: BusinessSummary = { id: "business-one", name: "Business One" };
+const TWO: BusinessSummary = { id: "business-two", name: "Business Two" };
 
 describe("resolveActiveBusinessId", () => {
   it("honours a stored value that names an authorised business", () => {
@@ -59,49 +37,6 @@ describe("resolveActiveBusinessId", () => {
   it("returns null when the user has no businesses at all", () => {
     expect(resolveActiveBusinessId("business-one", [])).toBeNull();
     expect(resolveActiveBusinessId(null, [])).toBeNull();
-  });
-
-  // Without this, an owner whose first-created business was closed would open
-  // the app into the closed notice every single time.
-  it("skips a closed business when choosing a default", () => {
-    expect(resolveActiveBusinessId(null, [CLOSED_ONE, TWO])).toBe("business-two");
-    expect(resolveActiveBusinessId(null, [CLOSED_ONE, DRAFT_TWO])).toBe(
-      "business-two",
-    );
-  });
-
-  it("still honours an explicit stored preference for a closed business", () => {
-    // If they deliberately switched to it to look at it, switching away from
-    // underneath them would be the surprising behaviour.
-    expect(resolveActiveBusinessId("business-one", [CLOSED_ONE, TWO])).toBe(
-      "business-one",
-    );
-  });
-
-  it("falls back to the first business when every one of them is closed", () => {
-    const closedTwo = business("business-two", "Business Two", { status: "closed" });
-    expect(resolveActiveBusinessId(null, [CLOSED_ONE, closedTwo])).toBe(
-      "business-one",
-    );
-  });
-});
-
-describe("hasUsableBusiness", () => {
-  it("is false when the person has nothing", () => {
-    expect(hasUsableBusiness([])).toBe(false);
-  });
-
-  it("is false when every business is closed", () => {
-    // This is what lets an owner start again instead of being redirected in a
-    // circle between the dashboard and onboarding.
-    const closedTwo = business("business-two", "Business Two", { status: "closed" });
-    expect(hasUsableBusiness([CLOSED_ONE, closedTwo])).toBe(false);
-  });
-
-  it("is true for any business that is not closed, including one still in setup", () => {
-    expect(hasUsableBusiness([DRAFT_TWO])).toBe(true);
-    expect(hasUsableBusiness([CLOSED_ONE, DRAFT_TWO])).toBe(true);
-    expect(hasUsableBusiness([ONE])).toBe(true);
   });
 });
 

@@ -200,10 +200,9 @@ select is(
 -- ---------------------------------------------------------------------------
 -- `closed` is excluded from the count so that three is a ceiling on concurrent
 -- use rather than a lifetime quota. Run as the session role, because no
--- application path can close a business: `authenticated` holds no UPDATE grant,
--- and public.declare_business_status -- the one RPC that writes status, added in
--- 20260813141500 -- refuses every transition into `closed` by design (DL-063).
--- Closing arrives with the branch that ships the closing workflow.
+-- application path may update businesses.status -- there is no UPDATE grant to
+-- `authenticated` and no RPC that sets it. That absence is the subject of its
+-- own open decision and is deliberately not changed here.
 
 update public.businesses
    set status = 'closed'

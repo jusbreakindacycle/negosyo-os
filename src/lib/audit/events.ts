@@ -17,12 +17,6 @@ export type AuditDomain = (typeof AUDIT_DOMAIN)[keyof typeof AUDIT_DOMAIN];
 
 export const AUDIT_ACTION = {
   businessCreated: "business.created",
-  /**
-   * The owner declaring that a business has started operating (DL-060 item 4).
-   * Written by `public.declare_business_status`, whose metadata carries
-   * `previous_status` and `next_status` — both already allow-listed below.
-   */
-  businessStatusDeclared: "business.status_declared",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTION)[keyof typeof AUDIT_ACTION];
