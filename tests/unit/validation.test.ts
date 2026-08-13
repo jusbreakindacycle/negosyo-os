@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { passwordSchema, signInSchema, signUpSchema } from "@/lib/validation/auth";
-import { businessNameSchema } from "@/lib/validation/business";
+import { businessNameSchema, legalNameSchema } from "@/lib/validation/business";
 
 describe("signUpSchema", () => {
   it("accepts a valid email and password", () => {
@@ -69,5 +69,38 @@ describe("businessNameSchema", () => {
 
   it("rejects an empty name", () => {
     expect(businessNameSchema.safeParse("").success).toBe(false);
+  });
+});
+
+describe("legalNameSchema", () => {
+  // These bounds must stay identical to the businesses_legal_name_length check
+  // constraint and to the invalid_legal_name guard in
+  // create_business_with_owner, both of which trim before measuring.
+  it("matches the database bounds of 2 to 200 trimmed characters", () => {
+    expect(legalNameSchema.safeParse("Du").success).toBe(true);
+    expect(legalNameSchema.safeParse("x".repeat(200)).success).toBe(true);
+
+    expect(legalNameSchema.safeParse("D").success).toBe(false);
+    expect(legalNameSchema.safeParse("x".repeat(201)).success).toBe(false);
+  });
+
+  it("trims before measuring, exactly as btrim does in the constraint", () => {
+    expect(legalNameSchema.parse("  Duo Brew Trading OPC  ")).toBe(
+      "Duo Brew Trading OPC",
+    );
+    expect(legalNameSchema.safeParse("   ").success).toBe(false);
+  });
+
+  // The screen skips the field entirely when it is left empty, so the schema
+  // never sees a blank. What matters here is that a rejection tells the owner
+  // they may leave it out — a business with no registered name is a normal and
+  // often permanent state, not an error to be talked out of.
+  it("offers leaving it blank when the value is too short", () => {
+    const result = legalNameSchema.safeParse("D");
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.message.toLowerCase()).toContain("blank");
+    }
   });
 });

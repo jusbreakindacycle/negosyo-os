@@ -8,6 +8,23 @@
  *
  * Docker is not installed on the current development machine, so this file is
  * currently produced by the linked variant. See DL-026.
+ *
+ * TEMPORARY HAND-MAINTAINED DELTA (DL-063 item A-2).
+ * ---------------------------------------------------------------------------
+ * The `feature/business-onboarding-lifecycle` migrations could not be reflected
+ * by either generator: `db:types` needs Docker, which is absent, and
+ * `db:types:linked` needs the hosted project to hold those migrations, which
+ * DL-063's merge gate forbids. The following were therefore written by hand and
+ * are marked so they are not mistaken for generated output:
+ *
+ *   - businesses.registration_status (Row / Insert / Update)
+ *   - Enums.business_registration_status and its Constants entry
+ *   - create_business_with_owner's new arguments and return shape
+ *   - declare_business_status
+ *
+ * The pgTAP suites remain the authority on the schema; this file is a
+ * convenience for the compiler. Regenerate the whole file, and delete this
+ * note, once hosted parity is reconciled.
  */
 export type Json =
   | string
@@ -150,6 +167,7 @@ export type Database = {
           id: string
           legal_name: string | null
           name: string
+          registration_status: Database["public"]["Enums"]["business_registration_status"]
           status: Database["public"]["Enums"]["business_status"]
           updated_at: string
         }
@@ -159,6 +177,7 @@ export type Database = {
           id?: string
           legal_name?: string | null
           name: string
+          registration_status?: Database["public"]["Enums"]["business_registration_status"]
           status?: Database["public"]["Enums"]["business_status"]
           updated_at?: string
         }
@@ -168,6 +187,7 @@ export type Database = {
           id?: string
           legal_name?: string | null
           name?: string
+          registration_status?: Database["public"]["Enums"]["business_registration_status"]
           status?: Database["public"]["Enums"]["business_status"]
           updated_at?: string
         }
@@ -310,13 +330,41 @@ export type Database = {
     }
     Functions: {
       create_business_with_owner: {
-        Args: { p_name: string }
+        Args: {
+          p_is_operating?: boolean
+          p_legal_name?: string | null
+          p_name: string
+          p_registration_status?: Database["public"]["Enums"]["business_registration_status"]
+        }
         Returns: {
           created_at: string
           created_by: string | null
           id: string
           legal_name: string | null
           name: string
+          registration_status: Database["public"]["Enums"]["business_registration_status"]
+          status: Database["public"]["Enums"]["business_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "businesses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      declare_business_status: {
+        Args: {
+          p_business_id: string
+          p_status: Database["public"]["Enums"]["business_status"]
+        }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          id: string
+          legal_name: string | null
+          name: string
+          registration_status: Database["public"]["Enums"]["business_registration_status"]
           status: Database["public"]["Enums"]["business_status"]
           updated_at: string
         }
@@ -429,6 +477,11 @@ export type Database = {
     }
     Enums: {
       audit_domain: "shared" | "start_comply" | "operate_decide"
+      business_registration_status:
+        | "unknown"
+        | "not_started"
+        | "in_progress"
+        | "complete"
       business_role: "owner"
       business_status: "draft" | "registering" | "operating" | "closed"
     }
@@ -562,6 +615,12 @@ export const Constants = {
   public: {
     Enums: {
       audit_domain: ["shared", "start_comply", "operate_decide"],
+      business_registration_status: [
+        "unknown",
+        "not_started",
+        "in_progress",
+        "complete",
+      ],
       business_role: ["owner"],
       business_status: ["draft", "registering", "operating", "closed"],
     },
