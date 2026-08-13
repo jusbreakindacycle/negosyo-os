@@ -99,7 +99,7 @@ export async function createBusiness(
     p_name: input.name,
     p_is_operating: input.isOperating,
     p_registration_status: input.registrationStatus,
-    p_legal_name: input.legalName,
+    p_legal_name: input.legalName ?? undefined,
   });
 
   if (error) {
