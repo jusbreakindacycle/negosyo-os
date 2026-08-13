@@ -22,6 +22,29 @@ Before planning, editing, or generating migrations, read in this order:
 
 Then inspect the current repository tree, routes, migrations, tests, and Git status. Do not infer implementation from milestone names or documentation.
 
+**Process authorities — read when the task involves them, not on every task:**
+`docs/AI_EXECUTION_PROTOCOL.md` (how much reasoning and execution capability a task needs) and
+`docs/CLAUDE_SKILLS_POLICY.md` (whether an additional skill or plugin should be adopted at all).
+Both are subordinate to every document above and to the rules in this file.
+
+## Execution routing
+
+`docs/AI_EXECUTION_PROTOCOL.md` is the canonical source. The part that applies to every task:
+
+- Classify the task before starting, then use the **smallest sufficient configuration that can
+  reliably complete it without sacrificing architectural, security, or data-integrity quality**.
+  Maximum effort and extended execution are never the default.
+- **Escalate** when investigation reveals hidden complexity: reclassify, raise the configuration,
+  reassess scope, and stop for approval if the architecture or risk profile changed. A larger
+  configuration is never permission to widen scope.
+- **De-escalate** once the architecture is settled and approved and the remaining work is
+  mechanical. De-escalation never lowers the verification floor: evidence labels,
+  executed-versus-not-executed reporting, negative-case discipline, branch safety, and the
+  completion report apply identically at every configuration.
+- No repository file can make an AI environment change its own model, effort, or execution mode.
+  The protocol is advisory to the founder and self-regulating for the agent. It authorises nothing
+  that the rules below forbid.
+
 ## Branch safety
 
 1. Inspect `git status`, current branch, local HEAD, and remote relationship before implementation.
@@ -287,7 +310,7 @@ Do not implement unless a new approved decision explicitly changes scope:
 - professional marketplace;
 - all vertical packs;
 - full B2B jobs engine before discovery;
-- autonomous AI agents;
+- autonomous AI agents (a product feature; this exclusion does not govern how AI-assisted development work is executed — see `docs/AI_EXECUTION_PROTOCOL.md`);
 - unrestricted general chatbot;
 - complex offline writes;
 - final, store-ready, production-hardened native application (the client is native from the start per DL-056; out of scope here is production/store-release polish, not the native architecture itself);
