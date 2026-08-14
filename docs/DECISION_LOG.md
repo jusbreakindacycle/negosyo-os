@@ -1381,3 +1381,161 @@ detection or capability mapping; those belong to a later, separately authorised 
 foundation. No closing workflow. No second-business creation UI. No `UPDATE` grant on
 `public.businesses`. No change to tenancy: a person still reaches a business through
 `business_memberships` and nothing else.
+
+---
+
+## DL-064 — The lifecycle merge and hosted push crossed DL-063's gate, and are ratified after the fact
+
+**Date:** 2026-08-14
+**Status:** Approved founder decision — retroactive ratification of a governance deviation
+
+### The gate that was crossed
+
+DL-063's merge gate reads, in full: *"Implementation, commits, pushes, pull-request creation, and CI are permitted. Merging into `main` is prohibited until a hosted-parity plan and its sequencing are explicitly authorised as separate work. No hosted write occurs in this branch."*
+
+Both halves were crossed. No decision entry authorised either at the time, and none exists between DL-063 and this one.
+
+### What the repository shows
+
+Observed on a read-only inspection of `main` at `ce644fd`, 2026-08-14:
+
+- `570fdb9`, "feat: add lifecycle-aware business onboarding", is a squash commit on `main` whose parent is `c9409af`. The lifecycle work is on `main`.
+- `ce644fd`, "chore: reconcile lifecycle branch with main (#18)", follows it and changes three files: `.gitignore`, `src/features/businesses/queries.ts`, and `src/types/database.ts`.
+- `main` carries ten migrations, including `20260813140000_add_business_registration_status.sql` and `20260813141500_business_lifecycle_rpcs.sql`.
+- `ce644fd`'s pull-request body states that the migrations were pushed to the linked Supabase project and that `src/types/database.ts` was regenerated with `npm run db:types:linked`.
+- The tracked `src/types/database.ts` contains `business_registration_status`, `businesses.registration_status`, the four-argument `create_business_with_owner`, and `declare_business_status`.
+
+### What that evidence does and does not establish
+
+`supabase gen types typescript --linked` reads the hosted project's catalogue. A generated file containing these objects is therefore consistent with the hosted project holding migrations 8–10, and is the strongest available evidence that the hosted write happened as described.
+
+It is not a hosted parity audit. It does not establish the hosted migration list, the `revoke`/`grant` pair restored by `20260813141500`, the absence of an `UPDATE` grant on `public.businesses`, or runtime policy behaviour.
+
+Therefore:
+
+- **Repository migrations 1–10:** `VERIFIED` through observed CI execution.
+- **Repository CI for migrations 8–10:** verified by observed runs:
+  - PR #15 / run `31622986650`: 6 suites, 259 assertions, PASS;
+  - PR #17 / run `31669151317`: 7 suites, 312 assertions, PASS, including `06_business_creation_ceiling.test.sql` and `07_business_lifecycle.test.sql`.
+- **Hosted parity for migrations 8–10:** remains `IMPLEMENTED_UNVERIFIED` — asserted, not audited.
+- **Hosted runtime RLS behaviour:** remains `IMPLEMENTED_UNVERIFIED`.
+
+The read-only DL-054-style hosted parity audit is **authorised here as verification work**. It is not a product-implementation task, it does not designate one, and this entry establishes no ordering between that audit, the physical-device walkthrough, and hosted runtime RLS verification.
+
+### The ratification
+
+The founder ratifies the merge and the hosted push as an authorised deviation, effective from this entry.
+
+This entry does not claim DL-063 permitted them, does not amend DL-063, and does not treat the outcome as evidence that the gate was unnecessary. The gate existed to prevent a client/backend contract break on `main`; the migrations were ultimately pushed to the hosted project and the resulting repository/hosted contract is now subject to verification. A gate is not lifted by acting past it, and a good outcome is not a decision.
+
+### The corrective rule that follows
+
+Two rules, standing from this entry:
+
+1. **A gate imposed by a decision entry is lifted only by a later decision entry, recorded before the gated action.** Where a gate has already been crossed, the next task on the repository is a reconciliation entry disposing of it. No feature work proceeds ahead of that entry.
+2. **An evidence claim made only in a commit message or pull-request body is not repository evidence.** `PROJECT_STATE.md`'s matrix is where a capability's status lives. A claim that has not reached that table has not been recorded, whatever a merged PR body says about it.
+
+### Unresolved historical context, recorded rather than explained
+
+`origin/revert-17-feature/business-onboarding-lifecycle` exists at `3c78e19`, "Revert 'feat: add lifecycle-aware business onboarding'". `main` contains no revert commit and no restoration commit; `ce644fd`'s parent is `570fdb9` directly. `ce644fd`'s PR body nonetheless refers to the lifecycle feature having been "reverted and later restored".
+
+The branch's existence and `main`'s history do not agree, and the available evidence does not settle which is right. **No intent is inferred and no explanation is adopted here.** The discrepancy is recorded as unresolved. If it is later established, a further entry states how — it is not backfilled into this one.
+
+### Documentation reconciled by the same task
+
+`PROJECT_STATE.md` had not been updated since `b52def1` and stated three things that were no longer true: that `feature/business-creation-ceiling` was unmerged and unpushed, that `origin/develop` was eleven commits behind (it is sixteen), and that `feature/business-onboarding-lifecycle` was the one next allowed engineering task after it had already merged. DL-063 item A-3 deferred this reconciliation to a separate task; this is that task. `docs/BUILD_PLAN.md`, `CLAUDE.md`, and `README.md` are corrected in the same change where they carry the same stale claims.
+
+### What this does not authorise
+
+No Milestone 2C Stocks work. No Permits, Taxes, document vault, or AI dashboard. No second-business creation interface and no closing workflow. No business-context columns. No schema change of any kind. **No implementation sequence**, and no ordering of the outstanding verification gates. This entry authorises documentation, decision text, and one read-only hosted audit — nothing else.
+
+---
+
+## DL-065 — Onboarding context, persistent business-profile facts, and AI classification are three separate things
+
+**Date:** 2026-08-14
+**Status:** Approved founder decision — product direction; authorises no implementation
+
+### What prompted it
+
+DL-060 and DL-063 exclude business-context columns — nature of business, industry classification, operating model, customer model, existing tools — from the lifecycle onboarding branch, and DL-063 places them in "a later, separately authorised branch built on this foundation."
+
+Read too broadly, that reads as *NegosyoOS should not ask an owner what kind of business they run.* It never meant that. This entry fixes the boundary so the constraint is not carried further than it goes.
+
+### The three concepts
+
+**1. Onboarding context.** The minimum an owner tells NegosyoOS during onboarding so the system knows what business it is dealing with and the first experience is not obviously irrelevant. Nature of business belongs here.
+
+**2. Persistent business-profile facts.** Structured facts such as industry, activity, and location, modelled and persisted as a general profile. These are justified one at a time, by an authorised workflow that consumes them, under the standing premature-abstraction rule. Nothing here is authorised by this entry.
+
+**3. AI classification.** Inferring or classifying an owner's business from other signals. **Excluded as a substitute for asking.** The owner supplies the nature of their business directly, through a selection or input mechanism, exactly as the four entry choices in `src/features/businesses/onboarding-choices.ts` already work.
+
+### The rule
+
+> Collect enough context to orient the system and make onboarding relevant. Do not collect or persist additional business facts merely because they might be useful someday.
+
+Industry, activity, location, and every other profile attribute are **not** made onboarding fields by this entry. Each still requires its own workflow justification.
+
+### Relationship to DL-060 and DL-063
+
+Neither is superseded, amended, or weakened. DL-063 already anticipated a later, separately authorised branch, and this entry says what that branch is allowed to be about — not that it may now begin.
+
+### What the repository supports today
+
+`public.businesses` carries `id`, `name`, `legal_name`, `status`, `registration_status`, `created_by`, and timestamps. Onboarding collects a business name, one of four owner-selected entry choices with a registration follow-up, and an optional registered name. **Nothing anywhere in the schema, the RPCs, the validation schemas, the generated types, or the client captures the nature of the business.** Support for it is zero, not partial.
+
+### What a later branch would require
+
+A separate decision entry, before implementation, that states at minimum:
+
+1. the concrete onboarding behaviour that consumes the fact — without a named consumer, persisting it is the premature abstraction this project avoids, and the entry should say so plainly rather than justify the column by this one;
+2. the value set: fixed options, free text, or both, and whether declining is permitted, as it is for registration status;
+3. a new additive migration, never an edit to an applied one;
+4. that `create_business_with_owner` is dropped and recreated rather than overloaded, with its `revoke`/`grant` pair restored explicitly — the same trap DL-063 item A-1 documented;
+5. pgTAP coverage in `01_schema` and `03_create_business_rpc`;
+6. the rendering rule: an owner self-declaration, never a classification, an eligibility determination, or a compliance fact — the DL-063 wording rule for `registration_status` applies unchanged;
+7. the hosted-parity sequencing, because a client sending an argument the hosted function does not have fails outright. That is the failure DL-063's merge gate existed to prevent and DL-064 records as having been crossed.
+
+### What this does not authorise
+
+No column, no migration, no RPC change, no onboarding step, no validation schema, no type regeneration. No general business-profile schema. No AI business-type detection or capability mapping. No editing path for any context fact.
+
+---
+
+## DL-066 — Master Handoff reconciliation: standing, vocabulary, and four direction rulings
+
+**Date:** 2026-08-14
+**Status:** Approved founder decision — product direction; authorises no implementation
+
+### Standing of `NEGOSYOOS_MASTER_HANDOFF.md`
+
+The Master Handoff is a **product-direction reference held outside this repository**. It records accumulated product thinking, the domain model, and scope philosophy.
+
+It is not authoritative for repository state, implementation status, sequence, or evidence. Where it and the repository appear to differ about what exists, `PROJECT_STATE.md` and the current tree govern, per `README.md` and `CLAUDE.md`. Where it and the repository differ about *direction*, the difference is reconciled by an entry in this log — as this one does — rather than by either side being silently reinterpreted.
+
+Its commit identifiers, evidence claims, and repository descriptions are historical and are not re-imported as facts.
+
+**It is deliberately not versioned in this repository, and this entry does not commit it.** Adding it to the tree would be a separate founder decision. Until such a decision exists, it is provided per session as external context, exactly as `CLAUDE.md`'s repository-authority section requires of any out-of-repository material.
+
+### Vocabulary and hierarchy
+
+Both models stand, at different levels, and neither replaces the other:
+
+- **Business-state domains** — identity, operations, records, obligations, resources, opportunities. The conceptual model of what NegosyoOS understands about a business.
+- **User-facing product areas** — Stocks & Operations, Permits & Compliance, Taxes & Records. The current navigation decomposition through which that understanding is operationalised.
+
+No vocabulary change and no navigation restructure follows from this entry. The three product-area names remain the only user-facing ones, and internal codenames still must not appear in the interface.
+
+### Four rulings
+
+**1. Structured knowledge.** DL-035 stands: a searchable article library with a content-management surface is rejected, and in-context help is what is built instead. That rejection is of a **product surface**, not of authoritative structured knowledge. The internal knowledge, rule, and provenance model — source, jurisdiction, agency, official citation, effective date, supersession, last-reviewed date, applicability conditions, version — remains a valid architectural and product requirement, already specified in `docs/TECHNICAL_FOUNDATION.md` §6 and required for permit and tax outputs by DL-052. **Its implementation is deferred** until an authorised workflow consumes it. Documented direction, not scheduled work.
+
+**2. Competitor research.** DL-039 stands unchanged and unmitigated. The competitor discovery held in the Master Handoff has not been brought into this repository with sources and dates, and until it is, **no document, screen, or pitch may state or imply that no adequate alternative exists or that the space is empty.** Importing that research with citations, so DL-039 can be properly closed or updated, is approved as future work and is not part of this reconciliation.
+
+**3. Sequence.** `docs/BUILD_PLAN.md`'s gated order stands. Stocks remains the current validation wedge. The Master Handoff's domain-audit-first sequencing is **not** authorisation to replace the repository's gated sequence; the broader domain model remains direction. Milestone 2C does not begin until the outstanding verification gates and this reconciliation are resolved.
+
+**4. Three-business ceiling.** Accepted as the current recorded constraint, with the consequence DL-063 item D-2 already recorded: with no second-business creation interface and no closing workflow, the ceiling is in practice a permanent cap and the business switcher is unreachable. **This is a known limitation, not a defect to be fixed here.** Neither a second-business interface nor a closing workflow is scheduled by this entry.
+
+### What this does not authorise
+
+No implementation of any kind: no knowledge or rule store, no requirements or applicability engine, no jurisdiction or geographic model, no competitor-research document, no navigation change, no second-business or closing workflow.
