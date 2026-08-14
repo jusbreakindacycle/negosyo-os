@@ -1,127 +1,218 @@
 # Project State
 
-**This document owns "what is true right now."** For product definition see `PRODUCT_SPEC.md`;
-for why a decision was made see `docs/DECISION_LOG.md`; for build sequence see
-`docs/BUILD_PLAN.md`; for implementation boundaries see `docs/TECHNICAL_FOUNDATION.md`. Where two
-documents appear to disagree, this file's evidence table and `docs/DECISION_LOG.md`'s most recent
-entry govern, in that order — see `README.md`'s controlling-files section.
+**This document owns what is true right now.**
 
-Last updated: 2026-08-13, on branch `feature/business-creation-ceiling`.
+It does not redefine product vision. Product direction is governed by the repository's approved
+decisions and the external `NEGOSYOOS_MASTER_HANDOFF.md` only where that direction has been
+reconciled into the decision log. This file records repository reality, evidence, gates, and
+authorised work.
 
-## Founder decision this document reflects
+Last updated: **2026-08-14**
+Repository baseline inspected: `main` at `ce644fd`
+Current documentation workstream: `docs/state-reconciliation` (local branch)
 
-NegosyoOS PH is a **native mobile application only** (React Native, Expo, Expo Router,
-TypeScript). This supersedes the prior Next.js/responsive-web/PWA delivery decision. See
-[DL-056](docs/DECISION_LOG.md#dl-056).
+## Current repository truth
 
-## Current branch / workstream
+NegosyoOS PH is a **native mobile application only**: React Native, Expo, Expo Router, and
+TypeScript against Supabase/PostgreSQL. The former Next.js/web/PWA direction is superseded by
+DL-056.
 
-`feature/business-creation-ceiling`, branched from `main` at `8bdbbd2`. Not merged, not pushed.
+The repository currently contains the business-onboarding lifecycle foundation. It does **not**
+contain a user-facing Stocks workflow, Permits workflow, Taxes workflow, document vault, or
+AI dashboard.
 
-`migration/mobile-foundation` **is merged**: it landed on `main` as `8bdbbd2` through PR #14 on
-2026-08-12, as a squash commit whose tree is identical to the branch tip `4206af9`. The previous
-revision of this file described it as unmerged and unpushed; that is no longer true.
+The external Master Handoff describes the broader product as a Business State and Business
+Navigation System. That broader vision is retained. The current repository is only a foundation
+toward that vision.
 
-One inherited inaccuracy is corrected with it. `origin/develop` still points at `2d42ecc`, the
-pre-Milestone-1 scaffold, and is eleven commits behind. PRs #12, #13, and #14 all targeted `main`
-directly, so `main` — not `develop` — is where integration actually happens, whatever
-`docs/DEVELOPMENT_WORKFLOW.md` describes. Reconciling the two is not this branch's work, but the
-gap should not go unrecorded.
+## Current branch and integration state
 
-## Active workstream
+`main` is at `ce644fd`.
 
-Phase gate B's last open application item: a server-side ceiling of at most three businesses whose
-status is not `closed` per authenticated owner (DL-055 item 6, DL-059 item 3).
+The following work is already merged into `main`:
+
+- `feature/business-creation-ceiling` → `b52def1` / PR #15
+- `feature/business-onboarding-lifecycle` → `570fdb9` / PR #17, followed by `ce644fd` / PR #18
+
+`origin/develop` remains at `2d42ecc` and is stale relative to `main`. PRs #12–#18 targeted
+`main`, so `main` is the actual integration baseline. The discrepancy with
+`docs/DEVELOPMENT_WORKFLOW.md` is recorded but is not silently resolved here.
+
+`origin/revert-17-feature/business-onboarding-lifecycle` exists at `3c78e19`, but no corresponding
+revert commit is present in `main`. The evidence does not establish the intent behind that branch.
+No explanation is inferred.
+
+## Current workstream
+
+**Documentation and evidence reconciliation only.**
+
+No product implementation is currently authorised by this document.
+
+DL-064 ratified the earlier merge/hosted-push governance deviation and authorised one read-only
+hosted parity audit as verification work.
+
+DL-065 clarified onboarding context versus persistent profile facts versus AI classification.
+
+DL-066 reconciled the Master Handoff's product-direction vocabulary and deferred architecture
+without authorising new implementation.
 
 ## Evidence matrix
 
 | Capability | Status | Evidence |
-| --- | --- | --- |
-| Database schema (7 migrations) | `VERIFIED` | CI applies from zero; 239 pgTAP assertions pass across 5 suites; a deliberate tenant-isolation regression was observed turning CI red (DL-053) |
-| Repository-owned hosted structural parity | `VERIFIED` | Read-only catalogue audit, 2026-08-04 (DL-054); re-confirmed read-only this session, 2026-08-09 — all 7 migrations present and matching on the hosted project |
-| Hosted runtime RLS behaviour | `IMPLEMENTED_UNVERIFIED` | No pgTAP suite has run against the hosted project |
-| Mobile application scaffold (Expo Router) | `IMPLEMENTED_UNVERIFIED` | Expo SDK 57.0.11 / React Native 0.86.2, versions from a real `npx expo install` resolution. `npm run typecheck`, `npm run lint`, `npx expo config --type public`, and `npx expo export --platform android` (1382 modules, produced a working Android Hermes bundle) all pass locally. Not yet run on a device |
-| Native auth (typed email OTP, allow-listed) | `IMPLEMENTED_UNVERIFIED` | Code complete; `verifyOtp` contract checked against installed `@supabase/auth-js` 2.111.0 and current Supabase docs, not assumed. `tests/unit/otp-types.test.ts` (7 assertions) passes locally. Sign-up → verify → sign-in → sign-out flow not yet exercised on a device |
-| Business tenancy on mobile (create/list/switch) | `IMPLEMENTED_UNVERIFIED` | Code complete, ported from the web client's proven logic. Not yet exercised on a device |
-| Session restore after relaunch | `NOT EXECUTED` | Requires a device walkthrough: kill and relaunch the app after signing in |
-| Cross-business isolation on mobile | `VERIFIED` at the database layer (DL-053, unchanged); mobile-client negative test `NOT EXECUTED` | Requires a device walkthrough: put a foreign business id in AsyncStorage and confirm no data returns |
-| Application CI (Expo) | `VERIFIED` | Ran on GitHub Actions for PR #14 and passed. Six checks green — `verify (22)`, `verify (24)`, and `Run pgTAP Security Tests`, across [run 31610028954](https://github.com/jusbreakindacycle/negosyo-os/actions/runs/31610028954) and [run 31610032243](https://github.com/jusbreakindacycle/negosyo-os/actions/runs/31610032243), 2026-08-12 |
-| Database CI (pgTAP) | unchanged, `CI VERIFIED` | Not modified by the mobile migration; re-ran green on PR #14 |
-| Local pgTAP execution | `BLOCKED` | Docker not installed on the founder's machine (DL-026), unchanged. Re-checked 2026-08-13: `docker` and `psql` both absent from PATH |
-| Stocks user interface | `DOCUMENTED_ONLY` | Not started |
-| Permits, Taxes, document vault, AI dashboard | `PLANNED` | Not started |
-| Three-business ceiling (DL-055 item 6) | `IMPLEMENTED_UNVERIFIED` | Migration `20260813090000_limit_active_businesses_per_owner.sql` and suite `06_business_creation_ceiling.test.sql` are written. **Neither has executed anywhere.** Docker is absent, and CI fires on PRs into `main`/`develop`, so no run exists yet |
-| Business lifecycle in the interface | `DOCUMENTED_ONLY` | The `status` column exists and is `VERIFIED` at the database layer, but nothing reads or writes it. `create_business_with_owner` does not set it, so every business takes the column default `operating`. Confirmed on the hosted project 2026-08-13: the single existing business row has status `operating`. See DL-060 |
+|---|---|---|
+| Database migrations 1–7 | `VERIFIED` | CI from zero; 239 assertions across five suites; deliberate tenant-isolation regression observed failing CI (DL-053) |
+| Database migrations 8–10 | `VERIFIED` | PR #17 / CI run `31669151317`: all ten migrations from zero, seven pgTAP suites, 312 assertions passed, including suites 06–07 |
+| Three-business ceiling | `VERIFIED` | PR #15 / CI run `31622986650`: six suites, 259 assertions passed, including `06_business_creation_ceiling.test.sql` |
+| Hosted structural parity, migrations 1–7 | `VERIFIED` | DL-054 read-only audit, 2026-08-04; re-confirmed 2026-08-09 |
+| Hosted structural parity, migrations 8–10 | `IMPLEMENTED_UNVERIFIED` | Hosted migration state is supported by linked type generation and PR evidence, but no DL-054-style catalogue audit has verified migration list, grants, ACLs, or policies |
+| Hosted runtime RLS behaviour | `IMPLEMENTED_UNVERIFIED` | No pgTAP suite has executed against the hosted project |
+| Native Expo application scaffold | `IMPLEMENTED_UNVERIFIED` | Local lint/typecheck/Expo checks have passed; no physical-device walkthrough |
+| Native typed email OTP | `IMPLEMENTED_UNVERIFIED` | Code and installed `@supabase/auth-js` contract checked; no complete physical-device auth walkthrough |
+| Business tenancy create/list/switch | `IMPLEMENTED_UNVERIFIED` | Code exists; no physical-device walkthrough |
+| Business lifecycle onboarding | `IMPLEMENTED_UNVERIFIED` | Four entry choices, server-derived lifecycle, registration dimension, Setup/Running/closed views, graduation RPC; unit suite has 71 passing tests; no device walkthrough |
+| Registration status dimension | `VERIFIED` at database level / `IMPLEMENTED_UNVERIFIED` at client level | Migration and pgTAP coverage exist; client rendering/behaviour remains device-unverified |
+| `declare_business_status` RPC | `VERIFIED` at database level / `IMPLEMENTED_UNVERIFIED` at client level | Lifecycle suite covers the RPC and legal transitions; client invocation remains device-unverified |
+| Nature-of-business onboarding context | `DOCUMENTED_ONLY` | DL-065 says enough context may orient onboarding, but no implementation is authorised yet |
+| Persistent business-profile facts | `DOCUMENTED_ONLY` | Each fact requires a concrete consuming workflow before persistence |
+| PSIC / formal industry classification | `DOCUMENTED_ONLY` | No repository implementation or approved decision establishing PSIC as an onboarding field was found in the supplied sources |
+| Stocks workflow | `DOCUMENTED_ONLY` | No user-facing Stocks flow exists |
+| Permits/compliance workflow | `PLANNED` | Not implemented |
+| Taxes/records workflow | `PLANNED` | Not implemented |
+| Document/evidence vault | `PLANNED` | Not implemented |
+| Generic applicability engine | `DOCUMENTED_ONLY` | Long-term direction; deferred until concrete workflows prove shared behaviour |
+| Jurisdiction/PSGC model | `DOCUMENTED_ONLY` | Long-term direction; no implementation authorised |
+| Structured rule/knowledge store | `DOCUMENTED_ONLY` | Direction retained; article-library UI remains rejected |
+| AI dashboard | `DOCUMENTED_ONLY` | AI remains assistance, not authority |
 
-## Local verification executed this session (2026-08-09)
+## What was actually verified on 2026-08-14
 
-| Command | Result |
-| --- | --- |
-| `npm install` | 454 packages added, 274 removed (the Next.js tree replaced by the Expo/React Native tree). Peer-dependency warnings only from `expo-router`'s optional web support pulling in `react-dom`/radix packages; not used by this app |
-| `npm run typecheck` (`tsc --noEmit`) | Passes, zero errors |
-| `npm run lint` (ESLint via `eslint-config-expo/flat.js`) | Passes, zero errors. One pre-existing warning on the generated `src/types/database.ts` (Unicode BOM), not hand-edited |
-| `npm test` (Vitest) | 30/30 tests pass across 5 suites |
-| `npx expo config --type public` | Valid config resolved, `EXPO_PUBLIC_*` env vars loaded from `.env.local` |
-| `npx expo export --platform android` | Succeeded: 1382 modules bundled, produced `_expo/static/js/android/entry-*.hbc` |
-| `git diff --stat main migration/mobile-foundation -- supabase/` | Empty — zero files under `supabase/` changed |
+The following commands were executed successfully on the current local checkout:
 
-Two real defects were found and fixed during this pass, not just re-run until green:
-`business-provider.tsx` originally called an async function directly inside a `useEffect`, which
-`react-hooks/set-state-in-effect` (part of `eslint-config-expo`'s React Hooks v7 rules) correctly
-flagged as a synchronous-setState-in-effect risk; it was restructured to route every state update
-through a `.then()` callback, the same shape `auth-provider.tsx` already used. A stale `.next/`
-build directory and `next-env.d.ts` left over from before this session were also caught by lint and
-removed.
+```text
+npm run lint
+npm run typecheck
+npm test
+git diff --check
+```
 
-**Not yet executed:** anything requiring a physical device (`npx expo start` + Expo Go). One attempt
-was made to run `npx expo start` in this session; its interactive terminal output (the QR code and
-dev-server menu) could not be captured through the non-interactive channel this session runs
-commands through, and the process was stopped rather than left running unobserved. This does not
-indicate a defect in the app — `expo export` already proved the same bundling pipeline works — it
-means the device walkthrough itself needs to run in a terminal someone is actually watching, with a
-phone in hand. See `TEST_STRATEGY.md` and the reconciliation report's device checklist.
+Result:
 
-## Blocking risks
+```text
+8 test files passed
+71 tests passed
+```
 
-See `RISK_REGISTER.md` for the full register. The three that gate what "done" can mean here:
+No product code was changed by these checks.
 
-1. No Docker locally → pgTAP is CI-only, never locally re-run before a push. Unchanged from DL-026.
-2. Device verification requires a human at a terminal with a phone — it cannot be completed inside
-   this session. See above.
-3. No iOS device or emulator available at all → iOS and Android-emulator evidence will remain
-   `NOT EXECUTED` even once the physical Android walkthrough is done.
+No physical-device walkthrough was executed.
 
-## Local verification executed 2026-08-13 (`feature/business-creation-ceiling`)
+No hosted database query was executed during this local reconciliation.
 
-| Command | Result |
-| --- | --- |
-| `npm run lint` | Passes, zero errors |
-| `npm run typecheck` (`tsc --noEmit`) | Passes, zero errors |
-| `npm test` (Vitest) | 36/36 pass across 6 suites — 30 pre-existing plus 6 new in `tests/unit/create-business-errors.test.ts` |
-| `npx expo config --type public` | Valid config resolved |
-| `npx expo export --platform android` | Succeeded, produced an Android Hermes bundle |
-| `docker --version`, `psql --version` | Both absent — the new pgTAP suite cannot run locally (DL-026) |
+## Phase gates
 
-Read-only catalogue checks against the hosted project `vbmfkfkfpvgezgyahdpb` (Postgres 17.6), to
-replace assumptions in the new migration with checked facts. No write, no DDL, no DML:
+### Phase Gate A — Documentation and claim repair
 
-| Checked | Observed |
-| --- | --- |
-| `pg_catalog.hashtext(text)` | present, returns `integer` |
-| `pg_catalog.pg_advisory_xact_lock(integer, integer)` | present |
-| `public.business_status` | `draft, registering, operating, closed` — matches the repository |
-| `public.business_role` | `owner` only — so the new `role = 'owner'` predicate guards a future widening rather than filtering anything today |
-| `public.businesses.status` default | `'operating'` |
-| `create_business_with_owner` | `SECURITY DEFINER`, `search_path=""`, no ceiling yet — the expected baseline for a `create or replace` |
-| Live rows in `public.businesses` | one, status `operating` |
+**CLOSED on 2026-08-13.**
 
-## Exactly one next allowed engineering task
+The native dashboard renders the three user-facing product areas:
 
-> **`feature/business-onboarding-lifecycle`** — replace name-only business onboarding with a
-> lifecycle-aware flow, add the separate registration-status dimension, derive Setup mode and
-> Running mode from `businesses.status`, and add the owner-declared graduation path. Approved by
-> [DL-060](docs/DECISION_LOG.md#dl-060). It begins only after this branch's ceiling work is merged
-> and its CI run observed green.
+- Stocks & Operations
+- Permits & Compliance
+- Taxes & Records
 
-No Stocks screen, reorder logic, or other Milestone 2C work is authorised before both that task and
-the mobile foundation acceptance gate (`docs/BUILD_PLAN.md`) are complete.
+Internal codenames may remain in internal audit/domain values where required for historical
+compatibility, but they must not render in public UI.
+
+### Phase Gate B — Database/application safety
+
+**CLOSED for the currently defined application items.**
+
+The three-business ceiling is implemented and verified in CI. The OTP allow-list is carried into the native verification path. The former font item is superseded by the native-mobile pivot.
+
+The database-verification portion was already verified under DL-053.
+
+## Outstanding verification gates before Milestone 2C
+
+These are **gates, not a build sequence**. No decision entry orders them against one another:
+
+1. Read-only hosted parity audit for migrations 8–10.
+2. Physical-device walkthrough:
+   - launch;
+   - sign-up;
+   - email-code verification;
+   - sign-in;
+   - sign-out;
+   - session restore after relaunch;
+   - business creation/list/switch behaviour;
+   - mobile cross-business negative case.
+3. Hosted runtime RLS behaviour.
+
+An observed CI run for migrations 8–10 is already available and is recorded above; it is no longer an outstanding gate.
+
+## Authorised work
+
+1. Documentation/state reconciliation associated with DL-064, DL-065, and DL-066.
+2. The read-only hosted parity audit authorised by DL-064.
+
+The hosted audit is catalogue-only:
+
+- migration list;
+- `business_registration_status` enum and column;
+- `create_business_with_owner` signature and grants;
+- `declare_business_status` signature and grants;
+- absence of an `UPDATE` grant on `public.businesses`;
+- relevant policies/ACLs.
+
+No DDL, DML, migration application, or other hosted write is authorised by this item.
+
+## Next implementation task
+
+**None currently designated.**
+
+Stocks / Milestone 2C remains the intended validation wedge in the broader product plan, but it does **not** become authorised merely because the verification gates close.
+
+A founder decision in `docs/DECISION_LOG.md` must explicitly designate the next implementation task.
+
+This prevents "verification complete" from being mistaken for "implementation authorised."
+
+## Important product-direction continuity
+
+The Master Handoff remains the broad product-direction reference:
+
+> NegosyoOS is a Business State and Business Navigation System for Philippine MSMEs.
+
+Its six conceptual business-state domains remain:
+
+- identity;
+- operations;
+- records;
+- obligations;
+- resources;
+- opportunities.
+
+The repository's three user-facing product areas remain:
+
+- Stocks & Operations;
+- Permits & Compliance;
+- Taxes & Records.
+
+These are different levels of decomposition, not competing product definitions.
+
+The long-term direction includes contextual business facts, applicability, jurisdiction, authoritative knowledge, evidence, business journey, and AI assistance. These are **not all current tables or features**.
+
+## Known constraints
+
+- Docker is not installed locally, so pgTAP is CI-only.
+- No iOS device/emulator is available for verification.
+- Client-side evidence remains below `VERIFIED` until a physical-device walkthrough occurs.
+- Hosted structural parity for migrations 8–10 remains unverified.
+- No second-business UI and no closing workflow exist; the three-business ceiling is therefore a practical permanent cap until those capabilities are separately authorised and implemented.
+- Do not infer a PSIC classification system from the Master Handoff. No such implementation is currently established by the supplied repository evidence.
+
+## Source discipline
+
+`docs/DECISION_LOG.md` is append-only. Do not rewrite historical entries.
+
+`PRODUCT_SPEC.md` **exists in the repository**. It remains a controlling product document, but its current "migration" sequencing text should not be treated as a replacement for the broader Master Handoff/product-direction model.
+
+The Master Handoff is external product-direction context, not repository-state evidence.

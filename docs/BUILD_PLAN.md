@@ -1,23 +1,24 @@
 # Phase 1A Build Plan
 
-**Mobile-only since 2026-08-09 (DL-056).** Every milestone below builds a native Expo/Expo Router
-application against the unchanged Supabase/PostgreSQL backend. Where a milestone previously
-referenced Next.js-specific work, it is marked superseded rather than rewritten out of history.
+**Native mobile only since DL-056.**
+
+This plan describes authorised implementation sequence. It does not authorise work merely because a
+future milestone is written here.
 
 ## Working rules
 
 1. Complete one gated slice at a time.
-2. Do not call a milestone complete because its schema, documentation, or tests were written.
-3. Do not add later features merely because their future need is obvious.
-4. User-facing names are **Stocks & Operations**, **Permits & Compliance**, and **Taxes & Records**. Internal package names may remain technical, but internal codenames must not appear in public UI.
-5. The dashboard follows the shared action model:
+2. A schema, screen, test, or document is not a completed user workflow by itself.
+3. Do not build future capabilities merely because they are foreseeable.
+4. Public product areas are Stocks & Operations, Permits & Compliance, and Taxes & Records.
+5. The shared action model is:
 
    > What needs attention → why → missing information → bounded next action → owner decision → outcome.
 
-6. AI may explain, summarise, prioritise, and draft. Deterministic rules, source-backed facts, permissions, and owner confirmation control high-impact outcomes.
-7. No legal or tax rule is “verified” without a primary source, effective date, applicability conditions, and last-reviewed date.
-8. The database suites now run in CI (DL-053), so the SQL freeze that rule imposed no longer applies for that reason. Phase gate B still governs what may be built next.
-9. Database schema changes are always new additive migrations; an already-applied migration is never edited to suit a later feature (`docs/DEVELOPMENT_WORKFLOW.md`).
+6. Deterministic rules and source-backed facts control authoritative outcomes.
+7. AI explains and assists; it does not decide.
+8. Schema changes are additive migrations only.
+9. Applied migrations are never edited.
 
 ## Status legend
 
@@ -29,306 +30,164 @@ referenced Next.js-specific work, it is marked superseded rather than rewritten 
 - `OUT_OF_SCOPE`
 - `SUPERSEDED`
 
-## Phase gate A — Documentation and claim repair
+## Phase Gate A — Documentation and claim repair
 
-**Status: closed on 2026-08-13.** Documentation and claim alignment was already complete. The public UI label item is now satisfied too, and had been since the mobile client landed — this entry simply had not caught up.
+**CLOSED on 2026-08-13.**
 
-The claim it carried, that "the authenticated dashboard still shows `Start & Comply` and `Operate & Decide`", described the retired Next.js client. That client no longer exists (DL-056). Grepping `app/` and `src/` for either codename returns exactly one hit: a comment in `app/(app)/dashboard.tsx` explaining why they are absent. The three cards render `Stocks & Operations`, `Permits & Compliance`, and `Taxes & Records`.
+Completed:
 
-- [x] Replace the exact-peso-loss validation rule with incident-and-behaviour validation.
-- [x] Replace the universal daily-sales spine with an evidence spine.
-- [x] Define the shared action model and AI-assisted dashboard.
-- [x] Add evidence-status and anti-hallucination rules.
-- [x] Add explicit current-phase exclusions.
-- [x] Update public UI labels so internal codenames do not appear. Satisfied by the native dashboard; verified by grep on 2026-08-13. `AUDIT_DOMAIN` in `src/lib/audit/events.ts` still carries `start_comply` and `operate_decide`, which is correct — those are stored domain values in `audit_events`, never rendered, and changing them would require rewriting existing audit rows.
-- [x] Correct commit/milestone-facing descriptions that imply the buying assistant is implemented — corrected through DL-050 and the current documentation. Historical commit titles remain unchanged, because commit history is not rewritten.
-- [x] Update `CLAUDE.md` to carry the same evidence-status and scope rules.
+- evidence-status rules;
+- anti-hallucination rules;
+- incident-and-behaviour validation;
+- evidence-spine rule;
+- shared action model;
+- mobile-only public UI labels;
+- correction of claims that the buying assistant already existed.
 
-**Exit condition:** A reader can distinguish current code, unverified code, approved plans, hypotheses, and exclusions without inspecting the entire history.
+The native dashboard now renders the public product-area names.
 
-## Phase gate B — Database verification before more feature SQL
+## Phase Gate B — Database/application safety
 
-**Status: database-verification portion `VERIFIED`; three application items still open, so the gate as a whole is not complete.**
+**CLOSED for its defined application items.**
 
-Database verification (complete — see DL-053):
+### Database verification
 
-- [x] Run all existing pgTAP suites in CI.
-- [x] Ensure the job uses a repeatable disposable database environment.
-- [x] Execute positive and negative cases for `tracked_items` and `daily_sales`.
-- [x] Prove that a deliberately broken RLS policy makes CI fail.
-- [x] Verify audit-event audience parity and metadata behaviour.
-- [x] Resolve any false-positive or unreachable security assertions.
-- [x] Record the exact assertion count and environment in the decision log.
+Verified under DL-053 and subsequent CI runs.
 
-Application items — status updated 2026-08-09 by the mobile pivot (DL-059). Two of the three original DL-055 items are resolved; one remains open.
+### Application items
 
-- [ ] Add an authenticated business-creation cap or another documented abuse ceiling before public testing. **Approved design (DL-055):** at most three businesses whose status is not `closed` per authenticated owner, enforced server-side. This is an abuse-control rule, not pricing or subscription packaging. Status `IMPLEMENTED_UNVERIFIED` on `feature/business-creation-ceiling`: migration `20260813090000_limit_active_businesses_per_owner.sql` replaces the RPC body and `supabase/tests/database/06_business_creation_ceiling.test.sql` covers the allowed case, the blocked case, the per-owner scope, the freed slot after closure, and the membership-based count. **The box stays unticked until a CI run is observed green** — Docker is absent locally, so nothing has executed this SQL anywhere yet.
-- [x] Validate OTP `type` through an allow-list before calling `verifyOtp`. **Approved design (DL-055), carried into the native verify path by DL-058:** an explicit runtime allow-list (`['email']`), checked before every `verifyOtp` call in the mobile app. Status per `PROJECT_STATE.md`.
-- [x] `SUPERSEDED` (DL-059): remove build-time dependence on externally downloaded fonts. **Moot** — the client is native (DL-056); there is no Next.js, no `next/font/google`, and no build-time font download to eliminate.
+- [x] Three-business ceiling — implemented and verified in CI (`b52def1`, PR #15, run
+      `31622986650`).
+- [x] OTP runtime allow-list — carried into the native typed-email verification path under DL-058/DL-059.
+- [x] Former web-font item — superseded by the native-mobile pivot under DL-056/DL-059.
 
-**Exit condition:** Every current migration is reproducible from zero and the full database test suite passes in CI. One intentional security regression has been shown to turn CI red.
+## Milestone 0M — Native mobile foundation
 
-**Database exit condition met on 2026-08-04.** Seven migrations applied from zero and 239 assertions across five suites passing on a disposable local stack, Supabase CLI 2.111.0, no hosted-project access ([run 30829590044](https://github.com/jusbreakindacycle/negosyo-os/actions/runs/30829590044)). A deliberate `daily_sales_select_member` regression, applied to the CI database only on a since-deleted branch, turned the job red on exactly the five predicted assertions ([run 30831767471](https://github.com/jusbreakindacycle/negosyo-os/actions/runs/30831767471)). Re-confirmed unchanged by the mobile pivot on 2026-08-09 — `supabase/` was not touched.
+**Implemented, but physical-device verification remains outstanding.**
 
-**Phase gate B remains open on one item.** Milestone 2C does not begin until the three-business ceiling is implemented and verified. Phase gate A also remains open on its public UI label item, which is tracked separately above.
+The repository contains the Expo Router mobile foundation, authentication, tenancy, and lifecycle
+onboarding code.
 
----
+No rebuild is authorised unless a verified defect requires it.
 
-## Milestone 0 — Repository and application scaffold
+## Milestone 1 — Authentication, tenancy, lifecycle
 
-**Status: `SUPERSEDED` by the mobile-foundation reconciliation (DL-056); see Milestone 0M below.**
+Database behaviour is verified in CI.
 
-Previously completed, web architecture (retired 2026-08-09):
+Client-side behaviour remains `IMPLEMENTED_UNVERIFIED` until the physical-device walkthrough is
+completed.
 
-- ~~Next.js App Router, TypeScript, Tailwind, `src/`, ESLint, lockfile;~~
-- ~~Supabase client and SSR packages;~~
-- ~~basic CI for application lint, type check, tests, and build;~~
-- ~~mobile-first responsive shell.~~
+The lifecycle model keeps:
 
-## Milestone 0M — Native mobile application scaffold
+- business lifecycle status;
+- registration status
 
-**Status: code complete and locally verified; device walkthrough not yet executed. See
-`PROJECT_STATE.md` for the full evidence matrix.**
+as separate dimensions.
 
-Replaces Milestone 0's client. Backend (Supabase project, migrations, RLS) is unchanged and not
-re-verified by this milestone — see Milestone 1.
+Registration status is an owner self-declaration, not proof of compliance.
 
-- [x] Expo SDK 57, Expo Router, TypeScript, ESLint (`eslint-config-expo`), lockfile. Versions from
-      a real `npx expo install` resolution, not hand-picked.
-- [x] Native Supabase client with session persistence and typed email-OTP authentication (code
-      complete; `verifyOtp`/`resend` contract checked against installed `@supabase/auth-js`
-      2.111.0 and current docs — DL-058).
-- [x] CI for application lint, type check, unit tests, `expo config`, `expo export`. All four pass
-      locally; not yet run on GitHub Actions (branch not pushed).
-- [ ] App launches on a physical Android device via Expo Go. **Not yet executed** — requires a
-      human running `npx expo start` in a terminal they can watch, phone in hand.
+## Milestone 2 — Stocks validation wedge
 
-No rebuild is authorised unless a defect is found.
+### Status
 
-## Milestone 1 — Authentication and business tenancy
+**Direction retained. Implementation not currently authorised.**
 
-**Status: core paths previously verified; the database regression requirement is complete (DL-053).**
+Stocks is the first validation wedge because the repository has a concrete operational reference case
+and recurring purchasing/availability problems. It is not a narrowing of the overall product into a
+coffee-shop app.
 
-Previously completed:
+### Operator validation
 
-- profiles, businesses, memberships, owner role;
-- sign-up, sign-in, sign-out, session handling;
-- business onboarding and switcher;
-- membership-based RLS pattern;
-- minimal audit model.
+Before building recommendation logic, validate:
 
-Standing tenancy rule:
+- recent stockout/overbuy/waste/forgotten-purchase incidents;
+- frequency;
+- missing information at decision time;
+- current workaround;
+- willingness to maintain 8–12 priority items;
+- who performs the count;
+- supplier cadence;
+- lead time;
+- pack/MOQ constraints;
+- whether an incumbent/franchisor ordering tool already exists;
+- whether a lightweight Messenger/form/spreadsheet habit test works.
 
-> A person reaches a business through `business_memberships` and through nothing else.
+Exact peso loss is useful but is **not required**.
 
-**Exit condition:** Retained, and its database regression requirement is met. The suites run in CI and have been observed failing when tenant isolation breaks (DL-053). This closes Milestone 1's database regression requirement only. It does not close Phase gate B, which stays open on its three application items.
+### Smallest usable Stocks workflow
 
-## Milestone 2 — First end-to-end Stocks action slice
+When explicitly authorised by a founder decision:
 
-**Current status: partial database foundation only.**
+- onboard 8–12 priority items;
+- record current quantity and unit;
+- record supplier timing;
+- allow a simple warning threshold;
+- surface an attention item;
+- show facts used and unknowns;
+- add to purchase list;
+- allow confirm/change/snooze/dismiss;
+- record outcome;
+- test on a real Android viewport.
 
-### 2A. Existing backend work
+Do not build a full inventory/warehouse system.
 
-- [x] Business `legal_name` and lifecycle `status` migration exists.
-- [x] Tracked-priority-item migration exists.
-- [x] Daily-sales migration and RPCs exist.
-- [x] Positive behavioural tests verified in CI (DL-053).
-- [ ] User-facing Stocks route and screens.
-- [ ] Reorder or purchase recommendation.
-
-### 2B. Operator validation before recommendation logic
-
-The third interview is useful, but an exact peso figure is not required.
-
-- [ ] Ask for the most recent concrete stockout, overbuy, waste, forgotten purchase, unavailable item, or supplier-visit uncertainty.
-- [ ] Record how often it happens.
-- [ ] Record what information was missing at decision time.
-- [ ] Record the current workaround.
-- [ ] Ask whether the operator would maintain 8–12 priority items.
-- [ ] Ask who would count and how long counting may take.
-- [ ] Confirm supplier visit/order cadence, lead time, pack size, and minimum order quantity.
-- [ ] Check whether the franchisor already provides an ordering tool and whether third-party tools are allowed.
-- [ ] Run a lightweight Messenger, form, or spreadsheet habit test before adding broad automation.
+## Milestone 2C gate
 
-### 2C. Smallest usable workflow
-
-**Not authorised yet.** Milestone 2C does not begin until the three Phase gate B application items are implemented and verified.
-
-- [ ] Onboard 8–12 priority items only.
-- [ ] Record current quantity and unit.
-- [ ] Record next supplier visit or expected lead time.
-- [ ] Allow a simple manually configured warning level before enough history exists.
-- [ ] Show an attention item such as “Milk may not last until the next supplier visit.”
-- [ ] Show the facts used and what is still unknown.
-- [ ] Add the item to a purchase list.
-- [ ] Let the owner confirm, change, snooze, or dismiss the action.
-- [ ] Record the owner decision and later outcome.
-- [ ] Test on a real 360px Android viewport.
-- [ ] Keep the normal daily workflow under two minutes; target under 30 seconds only for a single simple entry, not for every business workflow.
+Milestone 2C is **gated** by the outstanding verification work in `PROJECT_STATE.md`.
 
-### 2D. Optional evidence after the basic loop works
+Those verification gates are not a sequence and closing them does not itself authorise Stocks.
 
-- [ ] Record delivery/receiving.
-- [ ] Record purchase and cash outflow.
-- [ ] Record spoilage, waste, or item-unavailable events.
-- [ ] Record daily gross sales when useful.
-- [ ] Confirm before correcting an existing daily-sales date.
-- [ ] Flag unusual sales values only after a defensible baseline exists; never block legitimate outliers.
-- [ ] Calculate days-to-stockout only when units and usage evidence are compatible.
-- [ ] Show recommendation confidence and missing data.
-- [ ] Add deterministic calculation tests.
-
-### 2E. Minimal action dashboard
-
-- [ ] Replace placeholder/codename cards with user-facing product areas.
-- [ ] Add a “Needs attention” section.
-- [ ] Each card shows: issue, reason, next action, source facts, freshness, and unknowns.
-- [ ] AI may produce a plain-language daily summary from already-authorised action cards.
-- [ ] AI must not create a stock fact, legal obligation, tax amount, or permission.
-- [ ] Every AI suggestion links back to the underlying records or rule result.
-
-**Milestone 2 exit condition:** One operator can complete the full priority-item flow, understand why an item needs attention, decide what to buy, and record whether the action helped. The workflow must function without requiring an exact peso-loss calculation or a complete inventory.
-
-**Stop condition:** If three accessible operators experience no recurring purchase/availability problem, refuse the priority-item habit, or find the action cards useless after a realistic trial, stop expanding this Stocks slice and reconsider the wedge.
-
----
-
-## Milestone 3 — Secure document and evidence vault
-
-**Status: `PLANNED`**
-
-Build before any permit feature that depends on proof of submission.
-
-- [ ] Private storage bucket.
-- [ ] Document metadata and links.
-- [ ] Business-scoped RLS and signed access.
-- [ ] Upload, view, download, replace, and remove.
-- [ ] File-size and file-type controls.
-- [ ] Evidence status, issuer/source, issue date, expiry date, checksum where useful.
-- [ ] Audit events and unauthorised-access tests.
-- [ ] Retention and account-deletion policy.
-
-**Exit condition:** A submission receipt or official document can be stored privately, traced to its source, and referenced by a rule without making the file public.
+A founder decision must explicitly designate the next implementation task.
 
-## Milestone 4 — Permits and compliance action slice
-
-**Status: `PLANNED`; legal details remain source-dependent.**
-
-- [ ] Create a generic compliance case.
-- [ ] Add tasks, dependencies, blockers, responsible person, and next action.
-- [ ] Record requirement source, jurisdiction, business context, effective date, and last verification date.
-- [ ] Record fee as official, professional/service, third-party, or unknown.
-- [ ] Record temporary, conditional, issue, and expiry dates.
-- [ ] Preserve unknowns rather than inventing an answer.
-- [ ] Support owner-appointed representative authority with scope and expiry.
-- [ ] Use the document vault for assessments, receipts, and submissions.
-- [ ] Add Setup mode and an explicit owner-controlled operating-status transition.
-
-### RA 11032 boundary
-
-- [ ] Track the agency’s published classification and processing period only when supported by the applicable Citizen’s Charter or other current official source.
-- [ ] Record completeness evidence and required-payment evidence.
-- [ ] Do not infer automatic approval merely because time passed.
-- [ ] Deadline alerts should initially recommend review or escalation, not declare a permit approved.
-- [ ] Defer a generated legal demand letter until the template, trigger conditions, and disclaimers have qualified legal review.
-
-The law’s automatic-approval condition requires submitted documentary requirements and paid fees; transaction-specific classification and other conditions still matter. The product must represent those conditions rather than reduce the law to a universal countdown.
-
-### BMBE boundary
-
-- [ ] Non-binding screening only.
-- [ ] Separate enterprise size, eligibility assessment, application, Certificate of Authority, tax treatment, and each claimed benefit.
-- [ ] Never activate a benefit from screening alone.
-- [ ] Keep BMBE income-tax exemption and the 8% option from being presented as simultaneously available.
-- [ ] Require current official evidence and, when necessary, professional review.
-
-**Exit condition:** An owner or authorised representative can see what is done, blocked, missing, due, evidenced, and next—without the application guaranteeing approval or inventing a rule.
-
-## Milestone 5 — Taxes and records action slice
-
-**Status: `PLANNED`; rules must be reverified at implementation time.**
-
-- [ ] Capture taxpayer type, registration facts, applicable tax types, and evidence source.
-- [ ] Show record completeness by period.
-- [ ] Calculate only from eligible, complete, and clearly scoped inputs.
-- [ ] Show missing days, source coverage, assumptions, and last rule verification date.
-- [ ] Provide threshold monitoring as an early-warning estimate, not a legal conclusion.
-- [ ] Provide percentage-tax or 8% comparisons only when eligibility conditions are known.
-- [ ] Require owner review and professional confirmation for high-impact choices.
-- [ ] Add deterministic calculation tests and adversarial numeric cases.
-- [ ] Never prepare, sign, submit, or pay a return in Phase 1A.
-
-Daily sales is required for sales-based tax estimates, but Taxes must not depend on the Stocks UI or assume that inventory data proves tax completeness.
-
-**Exit condition:** The owner can see what records are missing, what estimate can safely be made, what assumptions were used, and what must be confirmed before filing.
-
-## Milestone 6 — Unified dashboard and bounded AI assistance
-
-**Status: `PLANNED`; built incrementally from M2 onward.**
-
-- [ ] Aggregate domain-produced action cards into Today, Upcoming, Waiting, and Review.
-- [ ] Preserve domain ownership: the dashboard reads actions; it does not become a universal write engine.
-- [ ] Prioritisation is deterministic where urgency is rule-based.
-- [ ] AI may summarise and explain the already-produced cards.
-- [ ] AI output contains source links, unknowns, and a bounded next action.
-- [ ] No LLM has direct database write authority.
-- [ ] High-impact changes require explicit confirmation and server-side authorisation.
-- [ ] Log model, prompt version, source record IDs, and confirmation where appropriate.
-- [ ] Provide a non-AI fallback for every required workflow.
-
-**Exit condition:** The dashboard remains useful when AI is disabled, and AI makes it easier to understand rather than changing the underlying truth.
-
-## Milestone 7 — Supervised field test and operational readiness
-
-- [ ] Fictional demo data clearly labelled.
-- [ ] Onboarding and recording-burden test.
-- [ ] Feedback capture without sensitive records.
-- [ ] Error, loading, and not-found states.
-- [ ] Basic observability and privacy review.
-- [ ] Low-width, slow-network, keyboard, and accessibility testing.
-- [ ] Export one operations action trail and one compliance case.
-- [ ] Field-test script and success measures.
-- [ ] Confirm whether owners return without founder prompting.
-- [ ] Ask willingness to pay only after the workflow has demonstrated value.
-
-**Exit condition:** Ready for supervised prototype testing, not production launch.
-
-## Post-validation packaging
-
-Only after the core workflow survives field testing:
-
-- web app manifest and icons;
-- installability;
-- safe application-shell caching;
-- connectivity indicator;
-- TWA/Play Store evaluation;
-- subscription billing evaluation.
-
-Offline writes, background sync, and native application work remain deferred until conflict rules are proven.
-
-## Explicitly out of scope for Phase 1A
-
-- nationwide authoritative requirement database;
-- direct government filing, payment, signing, or portal automation;
-- automatic approval claims or unreviewed demand letters;
-- automatic BMBE certification or tax-benefit activation;
-- full tax return preparation;
-- registered bookkeeping or accounting system;
-- full POS;
-- payroll and HR;
-- banking, lending, insurance, or investment products;
-- logistics marketplace;
-- professional marketplace;
-- all vertical packs;
-- full job/order engine before job-centred discovery;
-- multi-branch complexity;
-- autonomous AI agents;
-- unrestricted general-purpose chatbot;
-- complex offline writes;
-- subscription billing and final pricing;
-- production launch;
-- final shared inventory/jobs abstraction.
-
-## Post-Phase 1A discovery candidate
-
-Interview the B2B air-conditioning services operator before implementing quotations, work orders, technician assignment, equipment history, completion evidence, invoicing, receivables, collections, or recurring maintenance. These remain hypotheses until operator-confirmed.
+## Long-term domain work
+
+The Master Handoff preserves these as future direction:
+
+- business profile/context;
+- requirement model;
+- applicability;
+- national/local jurisdiction;
+- PSGC-compatible geography;
+- structured authoritative knowledge;
+- evidence;
+- business journey.
+
+### Rule-engine constraint
+
+Do not build a generic applicability engine before at least two concrete workflows demonstrate the
+shared behaviour.
+
+### Knowledge constraint
+
+Do not build a searchable article library. Structured authoritative rule/provenance data may be
+built when an authorised workflow consumes it.
+
+### BMBE constraint
+
+BMBE is a later program/eligibility case. Do not make it the architecture.
+
+## Milestone 3 — Evidence/document capability
+
+`PLANNED`.
+
+Only build when an authorised workflow actually needs private evidence storage.
+
+## Milestone 4 — Permits & Compliance
+
+`PLANNED`.
+
+The workflow must model source, jurisdiction, effective date, applicability conditions, evidence,
+blockers, and next actions. It must not guarantee approval.
+
+## Milestone 5 — Taxes & Records
+
+`PLANNED`.
+
+Calculations must be deterministic, versioned, scoped, tested, and based on current authoritative
+rules. Estimates are not final liability.
+
+## Product-wide stop rule
+
+If validation shows that the accessible target operators do not experience the recurring problem,
+will not maintain the minimum data habit, or find the proposed action useless after a realistic
+trial, stop or redesign the slice instead of expanding it.
